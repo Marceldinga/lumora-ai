@@ -1,17 +1,18 @@
-# lumora_ai
+# Lumora AI
 
-A new Flutter project.
+Lumora AI is a research, study, image, and video assistant built with Flutter and FastAPI.
 
-## Getting Started
+## Features
+- AI Chat
+- Study Planner
+- Research Helper
+- Quiz Generator
+- Flashcards
+- Image Generator
+- Video Generator
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Tech Stack
+- Flutter Web
+- FastAPI
+- Hugging Face
+- Tavily Search API
