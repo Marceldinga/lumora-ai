@@ -1,23 +1,11 @@
-# Flutter / Dart
 .dart_tool/
 build/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
-.pub/
-
-# Python
 __pycache__/
 *.pyc
 .venv/
 venv/
-
-# Secrets
 .env
 *.env
 backend/.env
-
-# IDE
 .vscode/
 .idea/
