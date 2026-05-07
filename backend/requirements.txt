@@ -1,6 +1,7 @@
-fastapi
+﻿fastapi
 uvicorn
-requests
 pydantic
+requests
+groq
 huggingface_hub
 pillow
