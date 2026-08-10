@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:ui_web' as ui_web;
@@ -9,15 +9,15 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:http/http.dart' as http;
 
 // ================================================================
-// DINMAX ADVANCED COMPLETE FRONTEND - main.dart
+// LUMORA ADVANCED COMPLETE FRONTEND - main.dart
 // Flutter Web + Netlify frontend for Railway/FastAPI backend.
 //
 // Build example:
 // flutter build web --release \
-//   --dart-define=DINMAX_BACKEND_URL=https://dinmax-ai-production.up.railway.app
+//   --dart-define=LUMORA_BACKEND_URL=https://lumora-ai-production.up.railway.app
 //
 // IMPORTANT: Default backend is already set to your Railway URL,
-// or override using --dart-define=DINMAX_BACKEND_URL=https://dinmax-ai-production.up.railway.app
+// or override using --dart-define=LUMORA_BACKEND_URL=https://lumora-ai-production.up.railway.app
 //
 // Backend endpoints expected:
 // POST /brain-chat  { message, mode, history, verify }
@@ -27,8 +27,8 @@ import 'package:http/http.dart' as http;
 // ================================================================
 
 const String kBackendBaseUrl = String.fromEnvironment(
-  'DINMAX_BACKEND_URL',
-  defaultValue: 'https://dinmax-ai-production.up.railway.app',
+  'LUMORA_BACKEND_URL',
+  defaultValue: 'https://lumora-ai-production.up.railway.app',
 );
 
 const String kChatPath = '/chat';
@@ -39,14 +39,14 @@ const String kHealthPath = '/health';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const DinMaxAIApp());
+  runApp(const LumoraAIApp());
 }
 
 // ================================================================
 // THEME + UTILITIES
 // ================================================================
 
-class DinMaxColors {
+class LumoraColors {
   static const bg = Color(0xFF070A13);
   static const panel = Color(0xFF0F172A);
   static const panel2 = Color(0xFF111A2E);
@@ -62,31 +62,31 @@ class DinMaxColors {
   static const danger = Color(0xFFEF4444);
 }
 
-class DinMaxTheme {
+class LumoraTheme {
   static ThemeData dark() {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: DinMaxColors.primary,
+      seedColor: LumoraColors.primary,
       brightness: Brightness.dark,
     );
 
     return ThemeData(
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: DinMaxColors.bg,
+      scaffoldBackgroundColor: LumoraColors.bg,
       colorScheme: colorScheme,
       useMaterial3: true,
       fontFamily: 'Inter',
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: DinMaxColors.bg,
+        fillColor: LumoraColors.bg,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: DinMaxColors.border),
+          borderSide: const BorderSide(color: LumoraColors.border),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: DinMaxColors.primary, width: 1.4),
+          borderSide: const BorderSide(color: LumoraColors.primary, width: 1.4),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -97,36 +97,36 @@ class DinMaxTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: DinMaxColors.primary2,
-          side: const BorderSide(color: DinMaxColors.border),
+          foregroundColor: LumoraColors.primary2,
+          side: const BorderSide(color: LumoraColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: DinMaxColors.primary2),
+        style: TextButton.styleFrom(foregroundColor: LumoraColors.primary2),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: DinMaxColors.panel2,
-        selectedColor: DinMaxColors.primary.withOpacity(0.25),
-        side: const BorderSide(color: DinMaxColors.border),
+        backgroundColor: LumoraColors.panel2,
+        selectedColor: LumoraColors.primary.withOpacity(0.25),
+        side: const BorderSide(color: LumoraColors.border),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       ),
       navigationRailTheme: const NavigationRailThemeData(
-        backgroundColor: DinMaxColors.panel,
-        indicatorColor: DinMaxColors.primary,
+        backgroundColor: LumoraColors.panel,
+        indicatorColor: LumoraColors.primary,
         selectedIconTheme: IconThemeData(color: Colors.white),
-        unselectedIconTheme: IconThemeData(color: DinMaxColors.muted),
+        unselectedIconTheme: IconThemeData(color: LumoraColors.muted),
         selectedLabelTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-        unselectedLabelTextStyle: TextStyle(color: DinMaxColors.muted),
+        unselectedLabelTextStyle: TextStyle(color: LumoraColors.muted),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: DinMaxColors.panel,
-        indicatorColor: DinMaxColors.primary.withOpacity(0.30),
+        backgroundColor: LumoraColors.panel,
+        indicatorColor: LumoraColors.primary.withOpacity(0.30),
         labelTextStyle: MaterialStateProperty.resolveWith((states) {
           final selected = states.contains(MaterialState.selected);
           return TextStyle(
-            color: selected ? Colors.white : DinMaxColors.muted,
+            color: selected ? Colors.white : LumoraColors.muted,
             fontWeight: selected ? FontWeight.bold : FontWeight.w500,
           );
         }),
@@ -143,8 +143,8 @@ List<String> backendBaseCandidates() {
   final lower = primary.toLowerCase();
 
   if (lower.contains('127.0.0.1') || lower.contains('localhost')) {
-    candidates.add('https://dinmax-ai-production.up.railway.app');
-    candidates.add('https://dinmax-ai-production.up.railway.app');
+    candidates.add('https://lumora-ai-production.up.railway.app');
+    candidates.add('https://lumora-ai-production.up.railway.app');
   }
 
   final seen = <String>{};
@@ -180,7 +180,7 @@ String enhanceStudyPrompt(String message, String mode) {
 
 Future<void> copyToClipboard(BuildContext context, String text, String label) async {
   if (text.trim().isEmpty) return;
-  await Clipboard.setData(ClipboardData(text: normalizeDinMaxCopiedText(text)));
+  await Clipboard.setData(ClipboardData(text: text));
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(content: Text(label), duration: const Duration(seconds: 2)),
@@ -209,150 +209,65 @@ String safeFileTimestamp() {
 
 
 
-
-String normalizeDinMaxDisplay(String input) {
+String normalizeLumoraDisplay(String input) {
   var s = input;
 
-  // Preserve LaTeX exactly:
-  // Inline math: \( ... \)
-  // Display math: \[ ... \]
-  // Do NOT convert LaTeX to plain text here. DinMaxSmartText renders it.
-
-  // Clean common mojibake without touching valid LaTeX.
-  final replacements = <String, String>{
-    'Â²âº': '^2+',
-    'Â²â»': '^2-',
-    'Â³âº': '^3+',
-    'Â³â»': '^3-',
-    'Âº': '+',
-    'Â»': '-',
-    'âº': '+',
-    'â»': '-',
-    'Â²': '^2',
-    'Â³': '^3',
-    '?': '+',
-    '?': '-',
-    '2': '_2',
-    '3': '_3',
-    'Â': '',
-  };
-
-  replacements.forEach((bad, good) {
-    s = s.replaceAll(bad, good);
-  });
-
-  // Remove excessive blank lines only.
-  s = s.replaceAll(RegExp(r'\n{4,}'), '\n\n\n');
-
-  return s.trim();
-}
-
-
-
-String normalizeDinMaxCopiedText(String input) {
-  var s = input.replaceAll('\r\n', '\n');
-
-  // Inline LaTeX: \( x \) -> x
+  // Render inline LaTeX as clean readable text inside sentences.
+  // Example: \( x = 2 \) becomes x = 2.
   s = s.replaceAllMapped(
     RegExp(r'\\\((.*?)\\\)', dotAll: true),
     (match) => match.group(1)?.trim() ?? '',
   );
 
-  // Display LaTeX: \[ y = mx + b \] -> y = mx + b
-  s = s.replaceAllMapped(
-    RegExp(r'\\\[(.*?)\\\]', dotAll: true),
-    (match) => '\n${match.group(1)?.trim() ?? ''}\n',
+  // Remove markdown table separator rows like |---:|---:|.
+  s = s.replaceAll(
+    RegExp(r'^\s*\|\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|\s*$', multiLine: true),
+    '',
   );
 
-  // $$ ... $$ support
+  // Make simple 2-column markdown tables readable in the current UI.
   s = s.replaceAllMapped(
-    RegExp(r'\$\$(.*?)\$\$', dotAll: true),
-    (match) => '\n${match.group(1)?.trim() ?? ''}\n',
-  );
+    RegExp(r'^\s*\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|\s*$', multiLine: true),
+    (match) {
+      final left = (match.group(1) ?? '').trim();
+      final right = (match.group(2) ?? '').trim();
 
-  // Common LaTeX cleanup
-  s = s.replaceAll(r'\times', '×');
-  s = s.replaceAll(r'\rightarrow', '?');
-  s = s.replaceAll(r'\approx', '˜');
-  s = s.replaceAll(r'\cdot', '·');
-  s = s.replaceAll(r'\,', ' ');
+      if (left.isEmpty || right.isEmpty) return '';
 
-  s = s.replaceAllMapped(
-    RegExp(r'\\text\{([^}]*)\}'),
-    (match) => match.group(1) ?? '',
-  );
-
-  // Convert markdown table lines into clean copy text.
-  final outputLines = <String>[];
-  for (final rawLine in s.split('\n')) {
-    final line = rawLine.trim();
-
-    final isSeparator = RegExp(
-      r'^\|\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|$',
-    ).hasMatch(line);
-
-    if (isSeparator) {
-      continue;
-    }
-
-    final isTableRow =
-        line.startsWith('|') && line.endsWith('|') && line.split('|').length >= 3;
-
-    if (isTableRow) {
-      final cells = line
-          .split('|')
-          .map((cell) => cell.trim())
-          .where((cell) => cell.isNotEmpty)
-          .toList();
-
-      if (cells.length >= 2) {
-        var left = cells[0].replaceAll(RegExp(r'\s+x$'), '');
-        var right = cells[1].replaceAll(RegExp(r'\s+y$'), '');
-
-        if (left.toLowerCase().contains('bedrooms') &&
-            right.toLowerCase().contains('price')) {
-          outputLines.add('');
-          outputLines.add('Bedrooms -> Price');
-        } else {
-          outputLines.add('$left -> $right');
-        }
+      final lower = '$left $right'.toLowerCase();
+      if (lower.contains('bedrooms') && lower.contains('price')) {
+        return 'Bedrooms -> Price';
       }
-    } else {
-      outputLines.add(rawLine);
-    }
-  }
 
-  s = outputLines.join('\n');
+      return '- $left -> $right';
+    },
+  );
 
-  // Repair any table text that still got joined.
-  s = s.replaceAll('Bedrooms x -> Price y', 'Bedrooms -> Price');
-  s = s.replaceAll('Bedrooms -> Price2 ->', 'Bedrooms -> Price\n2 ->');
-  s = s.replaceAll('Price y2 ->', 'Price\n2 ->');
+  // Fix table/list spacing after markdown table normalization.
+  s = s.replaceAll('Bedrooms -> Price- ', 'Bedrooms -> Price\n\n- ');
+  s = s.replaceAll('Price- ', 'Price\n\n- ');
+  s = s.replaceAllMapped(
+    RegExp(r'(:)\n(Bedrooms -> Price)'),
+    (match) => '${match.group(1)}\n\nBedrooms -> Price\n',
+  );
 
-  for (var i = 0; i < 5; i++) {
-    s = s.replaceAllMapped(
-      RegExp(r'(\d+\s*->\s*[0-9,]+)\s+(\d+\s*->)'),
-      (match) => '${match.group(1)}\n${match.group(2)}',
-    );
-  }
+  // Ensure bullet rows do not stick to previous text.
+  s = s.replaceAllMapped(
+    RegExp(r'([^\n])(-\s+\d+\s+->)'),
+    (match) => '${match.group(1)}\nBedrooms -> Price',
+  );
 
-  // Clean markdown emphasis
-  s = s.replaceAllMapped(RegExp(r'\*\*(.*?)\*\*'), (m) => m.group(1) ?? '');
-  s = s.replaceAllMapped(RegExp(r'__(.*?)__'), (m) => m.group(1) ?? '');
-  s = s.replaceAllMapped(RegExp(r'`([^`]+)`'), (m) => m.group(1) ?? '');
-
-  // Clean extra blank lines
+  // Clean extra blank lines.
   s = s.replaceAll(RegExp(r'\n{3,}'), '\n\n');
 
   return s.trim();
 }
 
-
-class DinMaxApiException implements Exception {
+class LumoraApiException implements Exception {
   final String message;
   final int? statusCode;
 
-  const DinMaxApiException(this.message, {this.statusCode});
+  const LumoraApiException(this.message, {this.statusCode});
 
   @override
   String toString() {
@@ -361,7 +276,7 @@ class DinMaxApiException implements Exception {
   }
 }
 
-class DinMaxApi {
+class LumoraApi {
   static Future<http.Response> _postJson({
     required String path,
     required Map<String, dynamic> body,
@@ -387,7 +302,7 @@ class DinMaxApi {
       }
     }
 
-    throw DinMaxApiException('Could not reach DinMax backend. Last error: $lastError');
+    throw LumoraApiException('Could not reach Lumora backend. Last error: $lastError');
   }
 
   static Future<bool> ping() async {
@@ -440,7 +355,7 @@ class DinMaxApi {
           body: requestBody,
         );
       }
-    } on DinMaxApiException catch (e) {
+    } on LumoraApiException catch (e) {
       if (e.statusCode == 404 || e.statusCode == 405) {
         response = await _postJson(
           path: kChatFallbackPath,
@@ -453,7 +368,7 @@ class DinMaxApi {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw DinMaxApiException(response.body, statusCode: response.statusCode);
+      throw LumoraApiException(response.body, statusCode: response.statusCode);
     }
 
     final raw = utf8.decode(response.bodyBytes);
@@ -461,7 +376,7 @@ class DinMaxApi {
     try {
       data = jsonDecode(raw);
     } catch (_) {
-      return normalizeDinMaxDisplay(cleanPlainOutput(raw));
+      return normalizeLumoraDisplay(cleanPlainOutput(raw));
     }
 
     if (data is Map<String, dynamic>) {
@@ -473,7 +388,7 @@ class DinMaxApi {
           data['message'];
 
       if (reply is Map<String, dynamic> && reply['content'] != null) {
-        return normalizeDinMaxDisplay(cleanPlainOutput(reply['content'].toString()));
+        return normalizeLumoraDisplay(cleanPlainOutput(reply['content'].toString()));
       }
 
       if (data['choices'] is List && (data['choices'] as List).isNotEmpty) {
@@ -481,16 +396,16 @@ class DinMaxApi {
         if (choice is Map<String, dynamic>) {
           final msg = choice['message'];
           if (msg is Map<String, dynamic> && msg['content'] != null) {
-            return normalizeDinMaxDisplay(cleanPlainOutput(msg['content'].toString()));
+            return normalizeLumoraDisplay(cleanPlainOutput(msg['content'].toString()));
           }
-          if (choice['text'] != null) return normalizeDinMaxDisplay(cleanPlainOutput(choice['text'].toString()));
+          if (choice['text'] != null) return normalizeLumoraDisplay(cleanPlainOutput(choice['text'].toString()));
         }
       }
 
-      return normalizeDinMaxDisplay(cleanPlainOutput(reply?.toString() ?? 'No reply returned from backend.'));
+      return normalizeLumoraDisplay(cleanPlainOutput(reply?.toString() ?? 'No reply returned from backend.'));
     }
 
-    return normalizeDinMaxDisplay(cleanPlainOutput(data.toString()));
+    return normalizeLumoraDisplay(cleanPlainOutput(data.toString()));
   }
 
   static Future<ImageGenerationResult> image({
@@ -511,21 +426,21 @@ class DinMaxApi {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw DinMaxApiException(response.body, statusCode: response.statusCode);
+      throw LumoraApiException(response.body, statusCode: response.statusCode);
     }
 
     final data = jsonDecode(response.body);
     if (data is! Map<String, dynamic>) {
-      throw const DinMaxApiException('Image endpoint returned an unexpected response.');
+      throw const LumoraApiException('Image endpoint returned an unexpected response.');
     }
 
     if (data['ok'] == false) {
-      throw DinMaxApiException(data['error']?.toString() ?? 'Image generation failed.');
+      throw LumoraApiException(data['error']?.toString() ?? 'Image generation failed.');
     }
 
     final imageBase64 = data['image_base64']?.toString() ?? data['image']?.toString();
     if (imageBase64 == null || imageBase64.trim().isEmpty) {
-      throw const DinMaxApiException('Image endpoint did not return image_base64.');
+      throw const LumoraApiException('Image endpoint did not return image_base64.');
     }
 
     return ImageGenerationResult(
@@ -553,21 +468,21 @@ class DinMaxApi {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw DinMaxApiException(response.body, statusCode: response.statusCode);
+      throw LumoraApiException(response.body, statusCode: response.statusCode);
     }
 
     final data = jsonDecode(response.body);
     if (data is! Map<String, dynamic>) {
-      throw const DinMaxApiException('Video endpoint returned an unexpected response.');
+      throw const LumoraApiException('Video endpoint returned an unexpected response.');
     }
 
     if (data['ok'] == false) {
-      throw DinMaxApiException(data['error']?.toString() ?? 'Video generation failed.');
+      throw LumoraApiException(data['error']?.toString() ?? 'Video generation failed.');
     }
 
     final videoBase64 = data['video_base64']?.toString() ?? data['video']?.toString();
     if (videoBase64 == null || videoBase64.trim().isEmpty) {
-      throw const DinMaxApiException('Video endpoint did not return video_base64.');
+      throw const LumoraApiException('Video endpoint did not return video_base64.');
     }
 
     return VideoGenerationResult(
@@ -582,29 +497,29 @@ class DinMaxApi {
 }
 
 // Backward-compatible wrappers in case you call these names elsewhere.
-Future<String> callDinMaxBackend({
+Future<String> callLumoraBackend({
   required String message,
   required String mode,
   List<Map<String, String>> history = const [],
 }) {
-  return DinMaxApi.chat(message: message, mode: mode, history: history);
+  return LumoraApi.chat(message: message, mode: mode, history: history);
 }
 
-Future<ImageGenerationResult> callDinMaxImageBackend({
+Future<ImageGenerationResult> callLumoraImageBackend({
   required String prompt,
   required String style,
   int width = 1024,
   int height = 1024,
 }) {
-  return DinMaxApi.image(prompt: prompt, style: style, width: width, height: height);
+  return LumoraApi.image(prompt: prompt, style: style, width: width, height: height);
 }
 
-Future<VideoGenerationResult> callDinMaxVideoBackend({
+Future<VideoGenerationResult> callLumoraVideoBackend({
   required String prompt,
   required String style,
   int seconds = 4,
 }) {
-  return DinMaxApi.video(prompt: prompt, style: style, seconds: seconds);
+  return LumoraApi.video(prompt: prompt, style: style, seconds: seconds);
 }
 
 // ================================================================
@@ -731,28 +646,28 @@ class GeneratedTextItem {
 // APP SHELL
 // ================================================================
 
-class DinMaxAIApp extends StatelessWidget {
-  const DinMaxAIApp({super.key});
+class LumoraAIApp extends StatelessWidget {
+  const LumoraAIApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DinMax AI',
+      title: 'Lumora AI',
       debugShowCheckedModeBanner: false,
-      theme: DinMaxTheme.dark(),
-      home: const DinMaxHomePage(),
+      theme: LumoraTheme.dark(),
+      home: const LumoraHomePage(),
     );
   }
 }
 
-class DinMaxHomePage extends StatefulWidget {
-  const DinMaxHomePage({super.key});
+class LumoraHomePage extends StatefulWidget {
+  const LumoraHomePage({super.key});
 
   @override
-  State<DinMaxHomePage> createState() => _DinMaxHomePageState();
+  State<LumoraHomePage> createState() => _LumoraHomePageState();
 }
 
-class _DinMaxHomePageState extends State<DinMaxHomePage> {
+class _LumoraHomePageState extends State<LumoraHomePage> {
   int selectedIndex = 0;
   bool? backendOnline;
 
@@ -764,7 +679,7 @@ class _DinMaxHomePageState extends State<DinMaxHomePage> {
 
   Future<void> checkBackend() async {
     setState(() => backendOnline = null);
-    final ok = await DinMaxApi.ping();
+    final ok = await LumoraApi.ping();
     if (!mounted) return;
     setState(() => backendOnline = ok);
   }
@@ -784,7 +699,7 @@ class _DinMaxHomePageState extends State<DinMaxHomePage> {
       case 0:
         return DashboardPage(onOpen: (index) => setState(() => selectedIndex = index));
       case 1:
-        return const DinMaxChatPage();
+        return const LumoraChatPage();
       case 2:
         return AiToolPage.studyPlanner();
       case 3:
@@ -800,7 +715,7 @@ class _DinMaxHomePageState extends State<DinMaxHomePage> {
       case 8:
         return MoreToolsPage(onOpen: (index) => setState(() => selectedIndex = index));
       default:
-        return const DinMaxChatPage();
+        return const LumoraChatPage();
     }
   }
 
@@ -920,8 +835,8 @@ class AppHeader extends StatelessWidget {
       height: isMobile ? 58 : 78,
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 24),
       decoration: const BoxDecoration(
-        color: DinMaxColors.panel,
-        border: Border(bottom: BorderSide(color: DinMaxColors.border)),
+        color: LumoraColors.panel,
+        border: Border(bottom: BorderSide(color: LumoraColors.border)),
       ),
       child: Row(
         children: [
@@ -930,7 +845,7 @@ class AppHeader extends StatelessWidget {
             width: isMobile ? 36 : 44,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [DinMaxColors.primary, Color(0xFF38BDF8)],
+                colors: [LumoraColors.primary, Color(0xFF38BDF8)],
               ),
               borderRadius: BorderRadius.circular(16),
             ),
@@ -939,7 +854,7 @@ class AppHeader extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'DinMax',
+              'Lumora',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -956,7 +871,7 @@ class AppHeader extends StatelessWidget {
               onPressed: onRefreshBackend,
               icon: Icon(
                 backendOnline == true ? Icons.cloud_done : Icons.cloud_sync,
-                color: backendOnline == false ? DinMaxColors.danger : DinMaxColors.primary2,
+                color: backendOnline == false ? LumoraColors.danger : LumoraColors.primary2,
               ),
             ),
         ],
@@ -984,10 +899,10 @@ class BackendStatusChip extends StatelessWidget {
             ? 'Backend online'
             : 'Backend offline';
     final color = status == null
-        ? DinMaxColors.warning
+        ? LumoraColors.warning
         : status == true
-            ? DinMaxColors.success
-            : DinMaxColors.danger;
+            ? LumoraColors.success
+            : LumoraColors.danger;
 
     return InkWell(
       borderRadius: BorderRadius.circular(999),
@@ -1111,7 +1026,7 @@ class MoreToolsPage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text(
           'Open quiz, flashcards, image, and video tools.',
-          style: TextStyle(color: DinMaxColors.muted),
+          style: TextStyle(color: LumoraColors.muted),
         ),
         const SizedBox(height: 14),
         for (final tool in tools) ...[
@@ -1146,8 +1061,8 @@ class DashboardMobileToolTile extends StatelessWidget {
         child: Row(
           children: [
             CircleAvatar(
-              backgroundColor: DinMaxColors.primary.withOpacity(0.18),
-              child: Icon(data.icon, color: DinMaxColors.primary2),
+              backgroundColor: LumoraColors.primary.withOpacity(0.18),
+              child: Icon(data.icon, color: LumoraColors.primary2),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1160,12 +1075,12 @@ class DashboardMobileToolTile extends StatelessWidget {
                     data.text,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: DinMaxColors.muted, height: 1.35),
+                    style: const TextStyle(color: LumoraColors.muted, height: 1.35),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: DinMaxColors.primary2),
+            const Icon(Icons.chevron_right, color: LumoraColors.primary2),
           ],
         ),
       ),
@@ -1191,18 +1106,18 @@ class HeroPanel extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: DinMaxColors.primary.withOpacity(0.16),
+              color: LumoraColors.primary.withOpacity(0.16),
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: DinMaxColors.primary.withOpacity(0.35)),
+              border: Border.all(color: LumoraColors.primary.withOpacity(0.35)),
             ),
             child: const Text(
               'Advanced AI learning suite',
-              style: TextStyle(color: DinMaxColors.primary2, fontWeight: FontWeight.bold),
+              style: TextStyle(color: LumoraColors.primary2, fontWeight: FontWeight.bold),
             ),
           ),
           SizedBox(height: isMobile ? 14 : 18),
           Text(
-            'Learn faster with DinMax.',
+            'Learn faster with Lumora.',
             style: TextStyle(
               fontSize: isMobile ? 26 : 34,
               fontWeight: FontWeight.w900,
@@ -1212,7 +1127,7 @@ class HeroPanel extends StatelessWidget {
           SizedBox(height: isMobile ? 10 : 14),
           const Text(
             'Chat, study planning, research tools, quizzes, flashcards, images, and video in one clean learning workspace.',
-            style: TextStyle(color: DinMaxColors.muted, height: 1.5, fontSize: 15),
+            style: TextStyle(color: LumoraColors.muted, height: 1.5, fontSize: 15),
           ),
           SizedBox(height: isMobile ? 16 : 22),
           FilledButton.icon(
@@ -1239,18 +1154,18 @@ class StatPill extends StatelessWidget {
       width: 185,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: DinMaxColors.bg.withOpacity(0.58),
+        color: LumoraColors.bg.withOpacity(0.58),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: DinMaxColors.border),
+        border: Border.all(color: LumoraColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(backgroundColor: DinMaxColors.primary.withOpacity(0.18), child: Icon(icon, color: DinMaxColors.primary2)),
+          CircleAvatar(backgroundColor: LumoraColors.primary.withOpacity(0.18), child: Icon(icon, color: LumoraColors.primary2)),
           const SizedBox(height: 14),
           Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: DinMaxColors.muted)),
+          Text(label, style: const TextStyle(color: LumoraColors.muted)),
         ],
       ),
     );
@@ -1275,7 +1190,7 @@ class DashboardCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(backgroundColor: DinMaxColors.primary.withOpacity(0.18), child: Icon(data.icon, color: DinMaxColors.primary2)),
+                CircleAvatar(backgroundColor: LumoraColors.primary.withOpacity(0.18), child: Icon(data.icon, color: LumoraColors.primary2)),
                 const Spacer(),
                 Chip(label: Text(data.badge), visualDensity: VisualDensity.compact),
               ],
@@ -1284,14 +1199,14 @@ class DashboardCard extends StatelessWidget {
             Text(data.title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
             Expanded(
-              child: Text(data.text, style: const TextStyle(color: DinMaxColors.muted, height: 1.45)),
+              child: Text(data.text, style: const TextStyle(color: LumoraColors.muted, height: 1.45)),
             ),
             const SizedBox(height: 8),
             const Row(
               children: [
-                Text('Open', style: TextStyle(color: DinMaxColors.primary2, fontWeight: FontWeight.bold)),
+                Text('Open', style: TextStyle(color: LumoraColors.primary2, fontWeight: FontWeight.bold)),
                 SizedBox(width: 6),
-                Icon(Icons.arrow_forward, size: 18, color: DinMaxColors.primary2),
+                Icon(Icons.arrow_forward, size: 18, color: LumoraColors.primary2),
               ],
             ),
           ],
@@ -1305,21 +1220,21 @@ class DashboardCard extends StatelessWidget {
 // CHAT PAGE
 // ================================================================
 
-class DinMaxChatPage extends StatefulWidget {
-  const DinMaxChatPage({super.key});
+class LumoraChatPage extends StatefulWidget {
+  const LumoraChatPage({super.key});
 
   @override
-  State<DinMaxChatPage> createState() => _DinMaxChatPageState();
+  State<LumoraChatPage> createState() => _LumoraChatPageState();
 }
 
-class _DinMaxChatPageState extends State<DinMaxChatPage> {
+class _LumoraChatPageState extends State<LumoraChatPage> {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
   final List<ChatMessage> messages = [
     ChatMessage(
       role: 'assistant',
-      text: 'Hello, I am DinMax â€” your advanced study, research, math, data, image, and video assistant. Ask me anything or choose a quick prompt below.',
+      text: 'Hello, I am Lumora — your advanced study, research, math, data, image, and video assistant. Ask me anything or choose a quick prompt below.',
     ),
   ];
 
@@ -1351,7 +1266,7 @@ class _DinMaxChatPageState extends State<DinMaxChatPage> {
           .map((m) => {'role': m.role, 'content': m.text})
           .toList();
 
-      final reply = await DinMaxApi.chat(message: text, mode: selectedMode, history: history);
+      final reply = await LumoraApi.chat(message: text, mode: selectedMode, history: history);
       if (!mounted) return;
       setState(() {
         messages.add(ChatMessage(role: 'assistant', text: reply));
@@ -1362,7 +1277,7 @@ class _DinMaxChatPageState extends State<DinMaxChatPage> {
         messages.add(
           ChatMessage(
             role: 'assistant',
-            text: 'DinMax could not connect to the backend. Check your Railway URL, CORS settings, and /brain-chat endpoint.\n\nError: $e',
+            text: 'Lumora could not connect to the backend. Check your Railway URL, CORS settings, and /brain-chat endpoint.\n\nError: $e',
           ),
         );
       });
@@ -1414,7 +1329,7 @@ class _DinMaxChatPageState extends State<DinMaxChatPage> {
               MediaQuery.of(context).size.width < 900 ? 12 : 22,
               MediaQuery.of(context).size.width < 900 ? 12 : 22,
               MediaQuery.of(context).size.width < 900 ? 12 : 22,
-              220,
+              140,
             ),
             itemCount: messages.length + (loading ? 1 : 0),
             itemBuilder: (context, index) {
@@ -1458,12 +1373,12 @@ class ChatToolbar extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 900 ? 10 : 16, vertical: MediaQuery.of(context).size.width < 900 ? 8 : 12),
       decoration: const BoxDecoration(
-        color: DinMaxColors.panel,
-        border: Border(bottom: BorderSide(color: DinMaxColors.border)),
+        color: LumoraColors.panel,
+        border: Border(bottom: BorderSide(color: LumoraColors.border)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.tune, size: 20, color: DinMaxColors.primary2),
+          const Icon(Icons.tune, size: 20, color: LumoraColors.primary2),
           const SizedBox(width: 10),
           Expanded(
             child: SingleChildScrollView(
@@ -1504,16 +1419,16 @@ class ChatComposer extends StatelessWidget {
     return Container(
       padding: EdgeInsets.fromLTRB(isMobile ? 10 : 16, 10, isMobile ? 10 : 16, 10),
       decoration: const BoxDecoration(
-        color: DinMaxColors.panel,
-        border: Border(top: BorderSide(color: DinMaxColors.border)),
+        color: LumoraColors.panel,
+        border: Border(top: BorderSide(color: LumoraColors.border)),
       ),
       child: isMobile
           ? Container(
               padding: const EdgeInsets.only(left: 14, right: 4),
               decoration: BoxDecoration(
-                color: DinMaxColors.bg,
+                color: LumoraColors.bg,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: DinMaxColors.border),
+                border: Border.all(color: LumoraColors.border),
               ),
               child: Row(
                 children: [
@@ -1529,7 +1444,7 @@ class ChatComposer extends StatelessWidget {
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         filled: false,
-                        hintText: 'Ask DinMax...',
+                        hintText: 'Ask Lumora...',
                         contentPadding: EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -1553,7 +1468,7 @@ class ChatComposer extends StatelessWidget {
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => onSend(),
                     decoration: const InputDecoration(
-                      hintText: 'Ask DinMax. Example: Create a study plan for Python data analytics...',
+                      hintText: 'Ask Lumora. Example: Create a study plan for Python data analytics...',
                     ),
                   ),
                 ),
@@ -1593,22 +1508,22 @@ class ChatBubble extends StatelessWidget {
           vertical: MediaQuery.of(context).size.width < 900 ? 10 : 16,
         ),
         decoration: BoxDecoration(
-          color: isUser ? DinMaxColors.primary : DinMaxColors.card,
+          color: isUser ? LumoraColors.primary : LumoraColors.card,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(20),
             topRight: const Radius.circular(20),
             bottomLeft: Radius.circular(isUser ? 20 : 6),
             bottomRight: Radius.circular(isUser ? 6 : 20),
           ),
-          border: Border.all(color: isUser ? DinMaxColors.primary2.withOpacity(0.35) : DinMaxColors.border),
+          border: Border.all(color: isUser ? LumoraColors.primary2.withOpacity(0.35) : LumoraColors.border),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.14), blurRadius: 16, offset: const Offset(0, 8))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DinMaxSmartText(
+            LumoraSmartText(
               text: text,
-              style: TextStyle(height: 1.5, fontSize: 15, color: isUser ? Colors.white : DinMaxColors.text),
+              style: TextStyle(height: 1.5, fontSize: 15, color: isUser ? Colors.white : LumoraColors.text),
             ),
             const SizedBox(height: 10),
             Row(
@@ -1618,7 +1533,7 @@ class ChatBubble extends StatelessWidget {
                   onPressed: () => copyToClipboard(context, text, 'Message copied'),
                   icon: const Icon(Icons.copy_rounded, size: 17),
                   label: const Text('Copy'),
-                  style: TextButton.styleFrom(foregroundColor: isUser ? Colors.white70 : DinMaxColors.primary2),
+                  style: TextButton.styleFrom(foregroundColor: isUser ? Colors.white70 : LumoraColors.primary2),
                 ),
               ],
             ),
@@ -1665,7 +1580,7 @@ class AiToolPage extends StatefulWidget {
         ToolFieldConfig(key: 'topic', label: 'What do you want to study?', hint: 'Example: Python for Data Analytics'),
         ToolFieldConfig(key: 'goal', label: 'Goal', hint: 'Example: Prepare for an exam, finish a project, learn basics'),
         ToolFieldConfig(key: 'days', label: 'Number of days', hint: 'Example: 7 days'),
-        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: high school, college, masterâ€™s, certification, or all levels', initialValue: 'All educational levels'),
+        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: high school, college, master’s, certification, or all levels', initialValue: 'All educational levels'),
         ToolFieldConfig(key: 'skill_level', label: 'Skill level', hint: 'Example: beginner, intermediate, advanced, or all levels', initialValue: 'All skill levels'),
         ToolFieldConfig(key: 'time', label: 'Daily study time', hint: 'Example: 1 hour per day'),
       ],
@@ -1700,7 +1615,7 @@ Rules:
       buttonText: 'Generate Research Help',
       fields: const [
         ToolFieldConfig(key: 'student_name', label: 'Student name', hint: 'Example: Marcel Dinga'),
-        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: college, masterâ€™s, doctoral, professional', initialValue: 'College / University Level'),
+        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: college, master’s, doctoral, professional', initialValue: 'College / University Level'),
         ToolFieldConfig(key: 'topic', label: 'Research topic', hint: 'Example: The role of machine learning in healthcare'),
         ToolFieldConfig(key: 'purpose', label: 'Purpose', hint: 'Example: Academic paper, class assignment, proposal'),
         ToolFieldConfig(key: 'requirements', label: 'Requirements', hint: 'Example: APA style, 5 paragraphs, include introduction and conclusion', maxLines: 3),
@@ -1745,7 +1660,7 @@ Rules:
         ToolFieldConfig(key: 'student_name', label: 'Student name', hint: 'Example: Marcel Dinga'),
         ToolFieldConfig(key: 'topic', label: 'Quiz topic', hint: 'Example: Linear regression or Group 2 elements'),
         ToolFieldConfig(key: 'count', label: 'Number of questions', hint: 'Example: 15'),
-        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: O Level, high school, college, masterâ€™s, all levels', initialValue: 'All educational levels'),
+        ToolFieldConfig(key: 'education_level', label: 'Educational level', hint: 'Example: O Level, high school, college, master’s, all levels', initialValue: 'All educational levels'),
         ToolFieldConfig(key: 'difficulty', label: 'Difficulty level', hint: 'Example: beginner, intermediate, advanced, all levels', initialValue: 'All difficulty levels'),
         ToolFieldConfig(key: 'type', label: 'Question type', hint: 'Example: multiple choice, short answer, mixed'),
         ToolFieldConfig(key: 'notes', label: 'Paste notes', hint: 'Paste notes here if you want the quiz based on your notes.', maxLines: 6),
@@ -1860,7 +1775,7 @@ class _AiToolPageState extends State<AiToolPage> {
     });
 
     try {
-      final reply = await DinMaxApi.chat(message: prompt, mode: widget.mode);
+      final reply = await LumoraApi.chat(message: prompt, mode: widget.mode);
       if (!mounted) return;
       setState(() {
         result = reply;
@@ -1869,7 +1784,7 @@ class _AiToolPageState extends State<AiToolPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        error = 'DinMax could not generate the result. Check your Railway backend URL and /brain-chat endpoint.\n\nError: $e';
+        error = 'Lumora could not generate the result. Check your Railway backend URL and /brain-chat endpoint.\n\nError: $e';
       });
     } finally {
       if (mounted) setState(() => loading = false);
@@ -1933,7 +1848,7 @@ class _AiToolPageState extends State<AiToolPage> {
               ),
               if (error != null || result != null) ...[
                 const SizedBox(height: 20),
-                ResultCard(title: 'DinMax Result', text: result, error: error),
+                ResultCard(title: 'Lumora Result', text: result, error: error),
               ],
               if (history.length > 1) ...[
                 const SizedBox(height: 20),
@@ -1986,7 +1901,7 @@ class _ImageGeneratorPageState extends State<ImageGeneratorPage> {
     });
 
     try {
-      final imageResult = await DinMaxApi.image(
+      final imageResult = await LumoraApi.image(
         prompt: prompt,
         style: style.isEmpty ? 'professional educational image' : style,
         width: imageSize,
@@ -2015,7 +1930,7 @@ Rules:
 - Do not invent details unrelated to the image topic.
 ''';
 
-      final textResult = await DinMaxApi.chat(message: explanationPrompt, mode: 'study');
+      final textResult = await LumoraApi.chat(message: explanationPrompt, mode: 'study');
       if (!mounted) return;
       setState(() {
         result = imageResult;
@@ -2025,7 +1940,7 @@ Rules:
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        error = 'DinMax could not generate the image or explanation. Check your Railway backend and /image endpoint.\n\nError: $e';
+        error = 'Lumora could not generate the image or explanation. Check your Railway backend and /image endpoint.\n\nError: $e';
       });
     } finally {
       if (mounted) setState(() => loading = false);
@@ -2038,7 +1953,7 @@ Rules:
     final blob = html.Blob([imageToDownload.imageBytes], 'image/png');
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.AnchorElement(href: url)
-      ..setAttribute('download', 'dinmax_image_${safeFileTimestamp()}.png')
+      ..setAttribute('download', 'lumora_image_${safeFileTimestamp()}.png')
       ..click();
     html.Url.revokeObjectUrl(url);
   }
@@ -2135,7 +2050,7 @@ class ImageFormCard extends StatelessWidget {
         children: [
           const FieldLabel('Image prompt'),
           const SizedBox(height: 8),
-          TextField(controller: promptController, maxLines: 6, decoration: const InputDecoration(hintText: 'Describe the image you want DinMax to create.')),
+          TextField(controller: promptController, maxLines: 6, decoration: const InputDecoration(hintText: 'Describe the image you want Lumora to create.')),
           const SizedBox(height: 16),
           const FieldLabel('Style'),
           const SizedBox(height: 8),
@@ -2208,9 +2123,9 @@ class ImageResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text('Model: ${result!.model}', style: const TextStyle(color: DinMaxColors.muted)),
+          Text('Model: ${result!.model}', style: const TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 4),
-          Text('Size: ${result!.width} x ${result!.height}', style: const TextStyle(color: DinMaxColors.muted)),
+          Text('Size: ${result!.width} x ${result!.height}', style: const TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 16),
           CopyBox(label: 'Prompt', text: result!.prompt),
           const SizedBox(height: 18),
@@ -2237,7 +2152,7 @@ class ImageHistoryPanel extends StatelessWidget {
         children: [
           const Text('Image History', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 6),
-          const Text('History is stored while the app is open. Use Download Image to save permanently.', style: TextStyle(color: DinMaxColors.muted)),
+          const Text('History is stored while the app is open. Use Download Image to save permanently.', style: TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 16),
           for (final item in items.take(12))
             HistoryTile(
@@ -2299,7 +2214,7 @@ class _VideoGeneratorPageState extends State<VideoGeneratorPage> {
     });
 
     try {
-      final videoResult = await DinMaxApi.video(
+      final videoResult = await LumoraApi.video(
         prompt: prompt,
         style: style.isEmpty ? 'professional educational video' : style,
         seconds: seconds,
@@ -2328,7 +2243,7 @@ Rules:
 - Do not invent details unrelated to the video topic.
 ''';
 
-      final textResult = await DinMaxApi.chat(message: explanationPrompt, mode: 'study');
+      final textResult = await LumoraApi.chat(message: explanationPrompt, mode: 'study');
       if (!mounted) return;
       setState(() {
         result = videoResult;
@@ -2338,7 +2253,7 @@ Rules:
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        error = 'DinMax could not generate the video or explanation. Video generation can take longer and may require Hugging Face provider access.\n\nError: $e';
+        error = 'Lumora could not generate the video or explanation. Video generation can take longer and may require Hugging Face provider access.\n\nError: $e';
       });
     } finally {
       if (mounted) setState(() => loading = false);
@@ -2350,7 +2265,7 @@ Rules:
 
     final blob = html.Blob([video.videoBytes], video.mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final viewType = 'dinmax-video-${DateTime.now().microsecondsSinceEpoch}';
+    final viewType = 'lumora-video-${DateTime.now().microsecondsSinceEpoch}';
 
     final videoElement = html.VideoElement()
       ..src = url
@@ -2374,7 +2289,7 @@ Rules:
     final blob = html.Blob([videoToDownload.videoBytes], videoToDownload.mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.AnchorElement(href: url)
-      ..setAttribute('download', 'dinmax_video_${safeFileTimestamp()}.mp4')
+      ..setAttribute('download', 'lumora_video_${safeFileTimestamp()}.mp4')
       ..click();
     html.Url.revokeObjectUrl(url);
   }
@@ -2475,7 +2390,7 @@ class VideoFormCard extends StatelessWidget {
         children: [
           const FieldLabel('Video prompt'),
           const SizedBox(height: 8),
-          TextField(controller: promptController, maxLines: 6, decoration: const InputDecoration(hintText: 'Describe the educational video you want DinMax to create.')),
+          TextField(controller: promptController, maxLines: 6, decoration: const InputDecoration(hintText: 'Describe the educational video you want Lumora to create.')),
           const SizedBox(height: 16),
           const FieldLabel('Style'),
           const SizedBox(height: 8),
@@ -2541,11 +2456,11 @@ class VideoResultCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Text('Model: ${result!.model}', style: const TextStyle(color: DinMaxColors.muted)),
+          Text('Model: ${result!.model}', style: const TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 4),
-          Text('Provider: ${result!.provider}', style: const TextStyle(color: DinMaxColors.muted)),
+          Text('Provider: ${result!.provider}', style: const TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 4),
-          Text('Duration: about ${result!.seconds} seconds', style: const TextStyle(color: DinMaxColors.muted)),
+          Text('Duration: about ${result!.seconds} seconds', style: const TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 16),
           CopyBox(label: 'Prompt', text: result!.prompt),
           const SizedBox(height: 18),
@@ -2572,11 +2487,11 @@ class VideoHistoryPanel extends StatelessWidget {
         children: [
           const Text('Video History', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 6),
-          const Text('History is stored while the app is open. Use Download Video to save permanently.', style: TextStyle(color: DinMaxColors.muted)),
+          const Text('History is stored while the app is open. Use Download Video to save permanently.', style: TextStyle(color: LumoraColors.muted)),
           const SizedBox(height: 16),
           for (final item in items.take(12))
             HistoryTile(
-              leading: const CircleAvatar(radius: 34, backgroundColor: Color(0xFF211A4A), child: Icon(Icons.movie_creation, color: DinMaxColors.primary2)),
+              leading: const CircleAvatar(radius: 34, backgroundColor: Color(0xFF211A4A), child: Icon(Icons.movie_creation, color: LumoraColors.primary2)),
               title: item.createdAt.toLocal().toString().split('.').first,
               subtitle: item.video.prompt,
               actions: [
@@ -2594,403 +2509,135 @@ class VideoHistoryPanel extends StatelessWidget {
 // SMART TEXT + COMMON WIDGETS
 // ================================================================
 
-
-class DinMaxSmartText extends StatelessWidget {
+class LumoraSmartText extends StatelessWidget {
   final String text;
   final bool selectable;
   final TextStyle? style;
 
-  const DinMaxSmartText({
-    super.key,
-    required this.text,
-    this.selectable = false,
-    this.style,
-  });
+  const LumoraSmartText({super.key, required this.text, this.selectable = true, this.style});
 
-  TextStyle get _baseStyle =>
-      style ??
-      const TextStyle(
-        height: 1.5,
-        fontSize: 15,
-        color: DinMaxColors.text,
-      );
+  TextStyle get _baseStyle => style ?? const TextStyle(height: 1.5, fontSize: 15, color: LumoraColors.text);
 
-  @override
-  Widget build(BuildContext context) {
-    final normalized = _normalizeForRendering(text);
+  String _cleanMath(String value) {
+    return value
+        .replaceAll(r'\[', '')
+        .replaceAll(r'\]', '')
+        .replaceAll(r'\(', '')
+        .replaceAll(r'\)', '')
+        .replaceAll(r'\implies', r'\Rightarrow')
+        .replaceAll('+/-', r'\pm')
+        .replaceAllMapped(RegExp(r'sqrt\(([^()]+)\)'), (m) => r'\sqrt{' + (m.group(1) ?? '') + '}')
+        .trim();
+  }
 
-    final blocks = _splitDisplayMath(normalized);
+  bool _looksLikeMath(String value) {
+    final t = value.trim();
+    if (t.isEmpty) return false;
+    if (t.length > 180 && !t.contains(r'\frac')) return false;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final block in blocks)
-          if (block.isDisplayMath)
-            _DisplayMathBlock(latex: block.content, style: _baseStyle)
-          else
-            ..._buildTextBlocks(block.content),
-      ],
+    return t.contains(r'\frac') ||
+        t.contains(r'\sqrt') ||
+        t.contains(r'\sum') ||
+        t.contains(r'\int') ||
+        t.contains(r'\lim') ||
+        t.contains(r'\log') ||
+        t.contains(r'\sin') ||
+        t.contains(r'\cos') ||
+        t.contains(r'\tan') ||
+        t.contains(r'\pm') ||
+        t.contains(r'\Rightarrow') ||
+        t.contains(r'\le') ||
+        t.contains(r'\ge') ||
+        t.contains(r'\neq') ||
+        t.contains(r'\times') ||
+        t.contains(r'\cdot') ||
+        t.contains(r'\alpha') ||
+        t.contains(r'\beta') ||
+        t.contains(r'\theta') ||
+        t.contains('sqrt(') ||
+        t.contains('+/-') ||
+        RegExp(r'(^|\s)[a-zA-Z]\^\d').hasMatch(t) ||
+        RegExp(r'\b\d+\s*/\s*\d+\b').hasMatch(t) && RegExp(r'[=+\-*/^]').hasMatch(t);
+  }
+
+  Widget _plain(String value) {
+    if (value.isEmpty) return const SizedBox(height: 8);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: selectable ? SelectableText(value, style: _baseStyle) : Text(value, style: _baseStyle),
     );
   }
 
-  String _normalizeForRendering(String input) {
-    var s = input;
-
-    // Normalize Windows/escaped newlines.
-    s = s.replaceAll('\r\n', '\n');
-
-    // Convert $$...$$ to \[...\] equivalent internally by display splitter.
-    // Keep \( ... \) and \[ ... \) untouched.
-    s = s.replaceAll(RegExp(r'\n{4,}'), '\n\n\n');
-
-    return s.trim();
-  }
-
-  List<_LatexBlock> _splitDisplayMath(String input) {
-    final blocks = <_LatexBlock>[];
-
-    final pattern = RegExp(
-      r'(\\\[(.*?)\\\]|\$\$(.*?)\$\$)',
-      dotAll: true,
-    );
-
-    var last = 0;
-
-    for (final match in pattern.allMatches(input)) {
-      if (match.start > last) {
-        blocks.add(_LatexBlock.text(input.substring(last, match.start)));
-      }
-
-      final latex = (match.group(2) ?? match.group(3) ?? '').trim();
-      blocks.add(_LatexBlock.math(latex));
-
-      last = match.end;
-    }
-
-    if (last < input.length) {
-      blocks.add(_LatexBlock.text(input.substring(last)));
-    }
-
-    return blocks;
-  }
-
-  List<Widget> _buildTextBlocks(String content) {
-    final widgets = <Widget>[];
-    final lines = content.split('\n');
-
-    var i = 0;
-    while (i < lines.length) {
-      final line = lines[i];
-
-      if (line.trim().isEmpty) {
-        widgets.add(const SizedBox(height: 10));
-        i++;
-        continue;
-      }
-
-      if (_isMarkdownTableStart(lines, i)) {
-        final tableLines = <String>[];
-        tableLines.add(lines[i]);
-        i++;
-
-        // Skip separator row.
-        if (i < lines.length && _isTableSeparator(lines[i])) {
-          i++;
-        }
-
-        while (i < lines.length && _isTableRow(lines[i])) {
-          tableLines.add(lines[i]);
-          i++;
-        }
-
-        widgets.add(_MarkdownTable(lines: tableLines, style: _baseStyle));
-        widgets.add(const SizedBox(height: 12));
-        continue;
-      }
-
-      if (_isHeading(line)) {
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 6),
-            child: _InlineLatexText(
-              text: line.replaceFirst(RegExp(r'^#{1,6}\s*'), '').trim(),
-              style: _baseStyle.copyWith(
-                fontSize: (_baseStyle.fontSize ?? 15) + 2,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        );
-        i++;
-        continue;
-      }
-
-      if (_isBullet(line)) {
-        final bulletLines = <String>[];
-        while (i < lines.length && _isBullet(lines[i])) {
-          bulletLines.add(lines[i]);
-          i++;
-        }
-
-        widgets.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final bullet in bulletLines)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('• ', style: _baseStyle),
-                        Expanded(
-                          child: _InlineLatexText(
-                            text: bullet.replaceFirst(RegExp(r'^\s*[-*]\s+'), ''),
-                            style: _baseStyle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-        continue;
-      }
-
-      // Normal paragraph: collect until blank, display math, table, heading, or bullet.
-      final paragraphLines = <String>[line.trim()];
-      i++;
-
-      while (i < lines.length &&
-          lines[i].trim().isNotEmpty &&
-          !_isMarkdownTableStart(lines, i) &&
-          !_isHeading(lines[i]) &&
-          !_isBullet(lines[i])) {
-        paragraphLines.add(lines[i].trim());
-        i++;
-      }
-
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _InlineLatexText(
-            text: paragraphLines.join(' '),
-            style: _baseStyle,
-          ),
+  Widget _math(String value) {
+    final cleaned = _cleanMath(value);
+    if (cleaned.isEmpty) return const SizedBox.shrink();
+    try {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: LumoraColors.bg.withOpacity(0.65),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: LumoraColors.borderSoft),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Math.tex(cleaned, textStyle: _baseStyle.copyWith(fontSize: 18)),
         ),
       );
+    } catch (_) {
+      return _plain(value);
+    }
+  }
+
+  List<Widget> _parseText() {
+    final widgets = <Widget>[];
+    final lines = text.replaceAll('**', '').split('\n');
+    final block = StringBuffer();
+    bool inMathBlock = false;
+
+    for (final rawLine in lines) {
+      final line = rawLine.trimRight();
+      final trimmed = line.trim();
+
+      if (trimmed == r'\[') {
+        inMathBlock = true;
+        block.clear();
+        continue;
+      }
+
+      if (trimmed == r'\]') {
+        inMathBlock = false;
+        widgets.add(_math(block.toString()));
+        block.clear();
+        continue;
+      }
+
+      if (inMathBlock) {
+        block.writeln(line);
+        continue;
+      }
+
+      if (trimmed.startsWith(r'\[') && trimmed.endsWith(r'\]')) {
+        widgets.add(_math(trimmed));
+      } else if (trimmed.startsWith(r'\(') && trimmed.endsWith(r'\)')) {
+        widgets.add(_math(trimmed));
+      } else if (_looksLikeMath(trimmed)) {
+        widgets.add(_math(trimmed));
+      } else {
+        widgets.add(_plain(line));
+      }
     }
 
+    if (block.isNotEmpty) widgets.add(_math(block.toString()));
     return widgets;
   }
 
-  bool _isHeading(String line) => RegExp(r'^\s*#{1,6}\s+').hasMatch(line);
-
-  bool _isBullet(String line) => RegExp(r'^\s*[-*]\s+').hasMatch(line);
-
-  bool _isTableRow(String line) {
-    final t = line.trim();
-    return t.startsWith('|') && t.endsWith('|') && t.split('|').length >= 3;
-  }
-
-  bool _isTableSeparator(String line) {
-    return RegExp(r'^\s*\|\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|\s*$')
-        .hasMatch(line);
-  }
-
-  bool _isMarkdownTableStart(List<String> lines, int index) {
-    if (index >= lines.length) return false;
-    if (!_isTableRow(lines[index])) return false;
-    if (index + 1 >= lines.length) return false;
-    return _isTableSeparator(lines[index + 1]);
-  }
-}
-
-class _LatexBlock {
-  final bool isDisplayMath;
-  final String content;
-
-  const _LatexBlock._(this.isDisplayMath, this.content);
-
-  factory _LatexBlock.text(String content) => _LatexBlock._(false, content);
-  factory _LatexBlock.math(String content) => _LatexBlock._(true, content);
-}
-
-class _InlineLatexText extends StatelessWidget {
-  final String text;
-  final TextStyle style;
-
-  const _InlineLatexText({
-    required this.text,
-    required this.style,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final spans = <InlineSpan>[];
-
-    final pattern = RegExp(r'\\\((.*?)\\\)', dotAll: true);
-    var last = 0;
-
-    for (final match in pattern.allMatches(text)) {
-      if (match.start > last) {
-        spans.add(TextSpan(text: _cleanMarkdown(text.substring(last, match.start)), style: style));
-      }
-
-      final latex = match.group(1)?.trim() ?? '';
-
-      spans.add(
-        WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Math.tex(
-              latex,
-              textStyle: style.copyWith(
-                fontSize: (style.fontSize ?? 15) + 1,
-                color: style.color ?? DinMaxColors.text,
-              ),
-              mathStyle: MathStyle.text,
-              onErrorFallback: (error) => Text(latex, style: style),
-            ),
-          ),
-        ),
-      );
-
-      last = match.end;
-    }
-
-    if (last < text.length) {
-      spans.add(TextSpan(text: _cleanMarkdown(text.substring(last)), style: style));
-    }
-
-    return RichText(
-      text: TextSpan(children: spans),
-      softWrap: true,
-    );
-  }
-
-  String _cleanMarkdown(String value) {
-    var s = value;
-
-    // Basic inline markdown cleanup.
-    s = s.replaceAll(RegExp(r'\*\*(.*?)\*\*'), r'$1');
-    s = s.replaceAll(RegExp(r'__(.*?)__'), r'$1');
-    s = s.replaceAll(RegExp(r'`([^`]+)`'), r'$1');
-
-    return s;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: _parseText());
   }
 }
-
-class _DisplayMathBlock extends StatelessWidget {
-  final String latex;
-  final TextStyle style;
-
-  const _DisplayMathBlock({
-    required this.latex,
-    required this.style,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (latex.trim().isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: DinMaxColors.bg.withOpacity(0.65),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DinMaxColors.borderSoft),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Math.tex(
-          latex.trim(),
-          textStyle: style.copyWith(
-            fontSize: (style.fontSize ?? 15) + 5,
-            color: style.color ?? DinMaxColors.text,
-          ),
-          mathStyle: MathStyle.display,
-          onErrorFallback: (error) => Text(
-            latex.trim(),
-            style: style.copyWith(fontFamily: 'monospace'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MarkdownTable extends StatelessWidget {
-  final List<String> lines;
-  final TextStyle style;
-
-  const _MarkdownTable({
-    required this.lines,
-    required this.style,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = lines
-        .map((line) => line
-            .trim()
-            .split('|')
-            .map((cell) => cell.trim())
-            .where((cell) => cell.isNotEmpty)
-            .toList())
-        .where((row) => row.isNotEmpty)
-        .toList();
-
-    if (rows.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: DinMaxColors.bg.withOpacity(0.50),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: DinMaxColors.borderSoft),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: Table(
-          border: TableBorder.symmetric(
-            inside: BorderSide(color: DinMaxColors.borderSoft.withOpacity(0.55)),
-          ),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          children: [
-            for (var r = 0; r < rows.length; r++)
-              TableRow(
-                decoration: BoxDecoration(
-                  color: r == 0
-                      ? DinMaxColors.primary.withOpacity(0.14)
-                      : Colors.transparent,
-                ),
-                children: [
-                  for (final cell in rows[r])
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                      child: _InlineLatexText(
-                        text: cell,
-                        style: style.copyWith(
-                          fontWeight: r == 0 ? FontWeight.w700 : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 
 class GlassCard extends StatelessWidget {
   final Widget child;
@@ -3003,9 +2650,9 @@ class GlassCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: DinMaxColors.card,
+        color: LumoraColors.card,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: DinMaxColors.border),
+        border: Border.all(color: LumoraColors.border),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.18), blurRadius: 24, offset: const Offset(0, 12))],
       ),
       child: child,
@@ -3026,7 +2673,7 @@ class PageIntroCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       child: Row(
         children: [
-          CircleAvatar(radius: 31, backgroundColor: DinMaxColors.primary.withOpacity(0.18), child: Icon(icon, size: 30, color: DinMaxColors.primary2)),
+          CircleAvatar(radius: 31, backgroundColor: LumoraColors.primary.withOpacity(0.18), child: Icon(icon, size: 30, color: LumoraColors.primary2)),
           const SizedBox(width: 18),
           Expanded(
             child: Column(
@@ -3034,7 +2681,7 @@ class PageIntroCard extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
                 const SizedBox(height: 8),
-                Text(description, style: const TextStyle(color: DinMaxColors.muted, height: 1.45)),
+                Text(description, style: const TextStyle(color: LumoraColors.muted, height: 1.45)),
               ],
             ),
           ),
@@ -3073,7 +2720,7 @@ class ResultCard extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 14),
-          DinMaxSmartText(text: resultText),
+          LumoraSmartText(text: resultText),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -3081,7 +2728,7 @@ class ResultCard extends StatelessWidget {
             children: [
               OutlinedButton.icon(onPressed: () => copyToClipboard(context, resultText, 'Result copied'), icon: const Icon(Icons.copy), label: const Text('Copy')),
               OutlinedButton.icon(
-                onPressed: () => downloadTextFile('dinmax_result_${safeFileTimestamp()}.txt', resultText),
+                onPressed: () => downloadTextFile('lumora_result_${safeFileTimestamp()}.txt', resultText),
                 icon: const Icon(Icons.download),
                 label: const Text('Download Text'),
               ),
@@ -3108,7 +2755,7 @@ class ErrorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFF7F1D1D)),
       ),
-      child: DinMaxSmartText(text: message, style: const TextStyle(color: Color(0xFFFFD5D5), height: 1.45)),
+      child: LumoraSmartText(text: message, style: const TextStyle(color: Color(0xFFFFD5D5), height: 1.45)),
     );
   }
 }
@@ -3128,7 +2775,7 @@ class EmptyStateCard extends StatelessWidget {
         children: [
           Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: DinMaxColors.muted, height: 1.45)),
+          Text(message, style: const TextStyle(color: LumoraColors.muted, height: 1.45)),
         ],
       ),
     );
@@ -3149,23 +2796,23 @@ class CopyBox extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label != null) ...[
-          Text(label!, style: const TextStyle(color: DinMaxColors.muted, fontWeight: FontWeight.w800, fontSize: 14)),
+          Text(label!, style: const TextStyle(color: LumoraColors.muted, fontWeight: FontWeight.w800, fontSize: 14)),
           const SizedBox(height: 8),
         ],
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: DinMaxColors.bg.withOpacity(0.72),
+            color: LumoraColors.bg.withOpacity(0.72),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: DinMaxColors.border),
+            border: Border.all(color: LumoraColors.border),
           ),
           child: Row(
             crossAxisAlignment: multiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: DinMaxSmartText(
+                child: LumoraSmartText(
                   text: displayText,
-                  style: TextStyle(fontFamily: multiline ? null : 'monospace', fontSize: 15, height: multiline ? 1.5 : 1.25, color: DinMaxColors.text),
+                  style: TextStyle(fontFamily: multiline ? null : 'monospace', fontSize: 15, height: multiline ? 1.5 : 1.25, color: LumoraColors.text),
                 ),
               ),
               const SizedBox(width: 10),
@@ -3195,7 +2842,7 @@ class HistoryTextPanel extends StatelessWidget {
           const SizedBox(height: 14),
           for (final item in history.take(8))
             HistoryTile(
-              leading: const CircleAvatar(backgroundColor: Color(0xFF211A4A), child: Icon(Icons.article, color: DinMaxColors.primary2)),
+              leading: const CircleAvatar(backgroundColor: Color(0xFF211A4A), child: Icon(Icons.article, color: LumoraColors.primary2)),
               title: item.createdAt.toLocal().toString().split('.').first,
               subtitle: item.text,
               actions: [
@@ -3223,9 +2870,9 @@ class HistoryTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: DinMaxColors.bg.withOpacity(0.72),
+        color: LumoraColors.bg.withOpacity(0.72),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: DinMaxColors.border),
+        border: Border.all(color: LumoraColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -3236,9 +2883,9 @@ class HistoryTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: DinMaxColors.primary2, fontWeight: FontWeight.bold)),
+                Text(title, style: const TextStyle(color: LumoraColors.primary2, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: DinMaxColors.text, height: 1.35)),
+                Text(subtitle, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: LumoraColors.text, height: 1.35)),
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: actions),
               ],
@@ -3249,7 +2896,4 @@ class HistoryTile extends StatelessWidget {
     );
   }
 }
-
-
-
 
