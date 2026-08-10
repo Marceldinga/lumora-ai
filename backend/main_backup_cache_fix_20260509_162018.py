@@ -1,7 +1,7 @@
-
+﻿
 # =============================================================================
-# DinMax AI BACKEND - COMPLETE SINGLE FILE
-# Version: 12.6.0-json-verifier-fallback-fixed
+# LUMORA AI BACKEND - COMPLETE SINGLE FILE
+# Version: 12.4.0-universal-study-router-intent-fixed
 #
 # File name: main.py
 #
@@ -15,7 +15,7 @@
 #   pip install fastapi uvicorn pydantic requests groq pillow python-dotenv
 #
 # Run:
-#   cd C:\Users\mding\DinMax_ai\backend
+#   cd C:\Users\mding\lumora_ai\backend
 #   python -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 #
 # Test:
@@ -32,7 +32,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import ast
 import math
 import os
 import re
@@ -58,7 +57,6 @@ except Exception:
 
 try:
     import sympy as sp
-    from sympy.parsing.sympy_parser import parse_expr, standard_transformations, implicit_multiplication_application
 except Exception:
     sp = None
 
@@ -77,21 +75,21 @@ except Exception:
 # CONFIG
 # =============================================================================
 
-APP_NAME = "DinMax AI Backend"
-APP_VERSION = "12.9.0-single-file-stable"
+APP_NAME = "Lumora AI Backend"
+APP_VERSION = "12.4.0-universal-study-router-intent-fixed"
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
-NETLIFY_SITE = os.getenv("NETLIFY_SITE", "https://DinMax-study.netlify.app").strip().rstrip("/")
+NETLIFY_SITE = os.getenv("NETLIFY_SITE", "https://lumora-study.netlify.app").strip().rstrip("/")
 FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", NETLIFY_SITE).strip().rstrip("/")
-DinMax_APP_KEY = os.getenv("DinMax_APP_KEY", "").strip()
+LUMORA_APP_KEY = os.getenv("LUMORA_APP_KEY", "").strip()
 
 AI_PROVIDER = os.getenv("AI_PROVIDER", "auto").strip().lower()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
 GROQ_FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant").strip()
-GROQ_BACKUP_MODEL = os.getenv("GROQ_BACKUP_MODEL", "llama-3.1-8b-instant").strip()
-GROQ_VERIFIER_MODEL = os.getenv("GROQ_VERIFIER_MODEL", "llama-3.1-8b-instant").strip()
+GROQ_BACKUP_MODEL = os.getenv("GROQ_BACKUP_MODEL", "llama-3.3-70b-versatile").strip()
+GROQ_VERIFIER_MODEL = os.getenv("GROQ_VERIFIER_MODEL", "llama-3.3-70b-versatile").strip()
 
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 HF_MODEL = os.getenv("HF_MODEL", "meta-llama/Llama-3.1-8B-Instruct").strip()
@@ -105,20 +103,20 @@ HF_ROUTER_URL = os.getenv("HF_ROUTER_URL", "https://router.huggingface.co/v1/cha
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "").strip()
 TAVILY_SEARCH_URL = os.getenv("TAVILY_SEARCH_URL", "https://api.tavily.com/search").strip()
 
-DEFAULT_MAX_TOKENS = int(os.getenv("DinMax_MAX_TOKENS", "1200"))
-FAST_MAX_TOKENS = int(os.getenv("DinMax_FAST_MAX_TOKENS", "700"))
-LONG_MAX_TOKENS = int(os.getenv("DinMax_LONG_MAX_TOKENS", "2600"))
-VERIFIER_MAX_TOKENS = int(os.getenv("DinMax_VERIFIER_MAX_TOKENS", "1000"))
-DEFAULT_TEMPERATURE = float(os.getenv("DinMax_TEMPERATURE", "0.25"))
-VERIFIER_TEMPERATURE = float(os.getenv("DinMax_VERIFIER_TEMPERATURE", "0.0"))
+DEFAULT_MAX_TOKENS = int(os.getenv("LUMORA_MAX_TOKENS", "1200"))
+FAST_MAX_TOKENS = int(os.getenv("LUMORA_FAST_MAX_TOKENS", "700"))
+LONG_MAX_TOKENS = int(os.getenv("LUMORA_LONG_MAX_TOKENS", "2600"))
+VERIFIER_MAX_TOKENS = int(os.getenv("LUMORA_VERIFIER_MAX_TOKENS", "1000"))
+DEFAULT_TEMPERATURE = float(os.getenv("LUMORA_TEMPERATURE", "0.25"))
+VERIFIER_TEMPERATURE = float(os.getenv("LUMORA_VERIFIER_TEMPERATURE", "0.0"))
 
 BRAIN_ENABLED = os.getenv("BRAIN_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}
 BRAIN_VERIFY = os.getenv("BRAIN_VERIFY", "true").strip().lower() in {"1", "true", "yes", "on"}
 BRAIN_MEMORY_MAX_ITEMS = int(os.getenv("BRAIN_MEMORY_MAX_ITEMS", "500"))
 BRAIN_MIN_VERIFY_SCORE = int(os.getenv("BRAIN_MIN_VERIFY_SCORE", "75"))
 
-CACHE_TTL_SECONDS = int(os.getenv("DinMax_CACHE_TTL_SECONDS", "900"))
-CACHE_MAX_ITEMS = int(os.getenv("DinMax_CACHE_MAX_ITEMS", "250"))
+CACHE_TTL_SECONDS = int(os.getenv("LUMORA_CACHE_TTL_SECONDS", "900"))
+CACHE_MAX_ITEMS = int(os.getenv("LUMORA_CACHE_MAX_ITEMS", "250"))
 
 RATE_LIMIT_CHAT_PER_MINUTE = int(os.getenv("RATE_LIMIT_CHAT_PER_MINUTE", "40"))
 RATE_LIMIT_IMAGE_PER_HOUR = int(os.getenv("RATE_LIMIT_IMAGE_PER_HOUR", "20"))
@@ -144,7 +142,7 @@ HF_VIDEO_TIMEOUT_SECONDS = int(os.getenv("HF_VIDEO_TIMEOUT_SECONDS", "420"))
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    description="DinMax AI unified backend with Groq, Hugging Face, Tavily, Brain routing, memory, verification, and deterministic calculation replies.",
+    description="Lumora AI unified backend with Groq, Hugging Face, Tavily, Brain routing, memory, verification, and deterministic calculation replies.",
 )
 
 allowed_origins = [
@@ -174,7 +172,7 @@ _RESPONSE_CACHE: Dict[str, Tuple[float, str]] = {}
 _USAGE: Dict[str, Dict[str, Any]] = {}
 _RATE_BUCKETS: Dict[str, List[float]] = {}
 _REQUEST_LOG: List[Dict[str, Any]] = []
-_DinMax_BRAIN_MEMORY: List[Dict[str, Any]] = []
+_LUMORA_BRAIN_MEMORY: List[Dict[str, Any]] = []
 
 
 # =============================================================================
@@ -224,7 +222,6 @@ class QuizRequest(BaseModel):
     questions: int = 10
     question_type: str = "multiple choice"
     notes: str = ""
-    verify: Optional[bool] = None
 
 
 class FlashcardRequest(BaseModel):
@@ -290,7 +287,7 @@ def client_ip(request: Request) -> str:
 
 
 def get_user_key(request: Request, user_id: Optional[str] = None) -> str:
-    header_user = request.headers.get("x-DinMax-user-id", "").strip()
+    header_user = request.headers.get("x-lumora-user-id", "").strip()
     if user_id:
         return f"user:{user_id.strip()}"
     if header_user:
@@ -388,11 +385,11 @@ def track_usage(user_key: str, kind: str, success: bool = True) -> None:
 
 
 def check_app_key(request: Request) -> None:
-    if not DinMax_APP_KEY:
+    if not LUMORA_APP_KEY:
         return
-    provided = request.headers.get("x-DinMax-app-key", "").strip()
-    if provided != DinMax_APP_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing DinMax app key.")
+    provided = request.headers.get("x-lumora-app-key", "").strip()
+    if provided != LUMORA_APP_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing Lumora app key.")
 
 
 def rate_limit(user_key: str, action: str, limit: int, window_seconds: int) -> None:
@@ -451,14 +448,11 @@ def should_search_internet(message: str) -> bool:
 
 
 def cache_key(message: str, mode: str, fast: bool, long_answer: bool) -> str:
-    value = f"{APP_VERSION}|{mode.lower().strip()}|fast={fast}|long={long_answer}|{message.lower().strip()}"
+    value = f"{mode.lower().strip()}|fast={fast}|long={long_answer}|{message.lower().strip()}"
     return hash_text(value)
 
 
 def get_cached_reply(message: str, mode: str, fast: bool, long_answer: bool) -> Optional[str]:
-    if mode.lower().strip() in {"study", "quiz", "research", "math", "data"}:
-        return None
-
     key = cache_key(message, mode, fast, long_answer)
     item = _RESPONSE_CACHE.get(key)
     if not item:
@@ -473,9 +467,6 @@ def get_cached_reply(message: str, mode: str, fast: bool, long_answer: bool) -> 
 
 
 def set_cached_reply(message: str, mode: str, fast: bool, long_answer: bool, reply: str) -> None:
-    if mode.lower().strip() in {"study", "quiz", "research", "math", "data"}:
-        return
-
     if should_search_internet(message):
         return
 
@@ -496,7 +487,7 @@ def home() -> Dict[str, Any]:
         "ok": True,
         "service": APP_NAME,
         "version": APP_VERSION,
-        "message": "DinMax AI backend is running with deterministic Python calculation replies.",
+        "message": "Lumora AI backend is running with deterministic Python calculation replies.",
         "frontend": NETLIFY_SITE,
         "docs": "/docs",
         "endpoints": {
@@ -525,12 +516,12 @@ def health() -> Dict[str, Any]:
         "environment": ENVIRONMENT,
         "frontend": NETLIFY_SITE,
         "cors": "open_for_flutter_web",
-        "security": {"app_key_enabled": bool(DinMax_APP_KEY)},
+        "security": {"app_key_enabled": bool(LUMORA_APP_KEY)},
         "brain": {
             "enabled": BRAIN_ENABLED,
             "verification_enabled": BRAIN_VERIFY,
             "verifier_model": GROQ_VERIFIER_MODEL,
-            "memory_items": len(_DinMax_BRAIN_MEMORY),
+            "memory_items": len(_LUMORA_BRAIN_MEMORY),
             "latex_math": True,
             "deterministic_calculation_replies": True,
         },
@@ -553,7 +544,7 @@ def health() -> Dict[str, Any]:
         },
         "python_calculation_engine": {
             "enabled": True,
-            "version": "universal-v12.7-deterministic-lessons",
+            "version": "universal-v12.4-intent-fixed",
             "sympy_available": sp is not None,
             "numpy_available": np is not None,
             "subjects": [
@@ -625,7 +616,7 @@ def usage() -> Dict[str, Any]:
         "active_users_observed": len(_USAGE),
         "totals": totals,
         "cache_items": len(_RESPONSE_CACHE),
-        "brain_memory_items": len(_DinMax_BRAIN_MEMORY),
+        "brain_memory_items": len(_LUMORA_BRAIN_MEMORY),
         "request_log_items": len(_REQUEST_LOG),
     }
 
@@ -634,9 +625,9 @@ def usage() -> Dict[str, Any]:
 def brain_memory() -> Dict[str, Any]:
     return {
         "ok": True,
-        "brain": "DinMax Brain v12.7.7",
-        "memory_items": len(_DinMax_BRAIN_MEMORY),
-        "recent": _DinMax_BRAIN_MEMORY[-10:],
+        "brain": "Lumora Brain v12.4",
+        "memory_items": len(_LUMORA_BRAIN_MEMORY),
+        "recent": _LUMORA_BRAIN_MEMORY[-10:],
     }
 
 
@@ -647,7 +638,7 @@ def dashboard_features() -> Dict[str, Any]:
         "features": [
             {
                 "id": "brain",
-                "title": "DinMax Brain v12.7.7",
+                "title": "Lumora Brain v12.4",
                 "description": "Unified router, memory, verification, search, LaTeX math, and deterministic calculation replies.",
                 "endpoint": "/brain-chat",
                 "status": "active" if BRAIN_ENABLED else "disabled",
@@ -1165,29 +1156,6 @@ def physics_engine(message: str) -> Optional[Dict[str, Any]]:
     text = normalize_text(message).lower()
     nums = extract_numbers(message)
 
-    if "acceleration" in text and ("rest" in text or "from rest" in text) and len(nums) >= 2:
-        final_velocity = nums[0]
-        time_taken = nums[1]
-
-        if time_taken == 0:
-            return {
-                "type": "acceleration",
-                "ok": False,
-                "error": "Time cannot be zero."
-            }
-
-        acceleration = final_velocity / time_taken
-
-        return {
-            "type": "acceleration",
-            "ok": True,
-            "initial_velocity": 0,
-            "final_velocity": final_velocity,
-            "time": time_taken,
-            "acceleration": acceleration,
-            "formula": "a = (v - u) / t",
-        }
-
     if ("force" in text or "newton" in text) and len(nums) >= 2:
         mass = nums[0]
         acceleration = nums[1]
@@ -1311,74 +1279,39 @@ def calculus_engine(message: str) -> Optional[Dict[str, Any]]:
     try:
         x = sp.Symbol("x")
 
-        if "derivative" in text or "differentiate" in text or "derive" in text:
-            patterns = [
-                r"derivative\s+of\s+(.+)",
-                r"find\s+the\s+derivative\s+of\s+(.+)",
-                r"solve\s+the\s+derivative\s+of\s+(.+)",
-                r"differentiate\s+(.+)",
-                r"derive\s+(.+)",
-            ]
-
-            expr_text = ""
-            for pattern in patterns:
-                match = re.search(pattern, raw, flags=re.I)
-                if match:
-                    expr_text = match.group(1)
-                    break
-
-            if not expr_text:
+        if "derivative" in text or "differentiate" in text:
+            expr = re.sub(r"(?i)(find|compute|calculate|the|derivative|differentiate|of|with respect to x|wrt x)", " ", raw)
+            expr = expr.strip().replace("^", "**")
+            if not expr:
                 return None
-
-            expr_text = expr_text.strip()
-            expr_text = re.sub(r"^f\(x\)\s*=\s*", "", expr_text, flags=re.I)
-            expr_text = expr_text.replace("^", "**")
-
-            result = sp.diff(parse_expr(expr_text, transformations=standard_transformations + (implicit_multiplication_application,)), x)
-
+            result = sp.diff(sp.sympify(expr), x)
             return {
                 "type": "derivative",
                 "ok": True,
-                "expression": expr_text.replace("**", "^"),
+                "expression": expr,
                 "variable": "x",
-                "result": re.sub(r"(?<=\d)\*([a-zA-Z])", r"\1", str(result).replace("**", "^")),
+                "result": str(result),
             }
 
         if "integral" in text or "integrate" in text:
-            patterns = [
-                r"integral\s+of\s+(.+)",
-                r"find\s+the\s+integral\s+of\s+(.+)",
-                r"integrate\s+(.+)",
-            ]
-
-            expr_text = ""
-            for pattern in patterns:
-                match = re.search(pattern, raw, flags=re.I)
-                if match:
-                    expr_text = match.group(1)
-                    break
-
-            if not expr_text:
+            expr = re.sub(r"(?i)(find|compute|calculate|the|integral|integrate|of|with respect to x|wrt x)", " ", raw)
+            expr = expr.strip().replace("^", "**")
+            if not expr:
                 return None
-
-            expr_text = expr_text.strip()
-            expr_text = re.sub(r"^f\(x\)\s*=\s*", "", expr_text, flags=re.I)
-            expr_text = expr_text.replace("^", "**")
-
-            result = sp.integrate(parse_expr(expr_text, transformations=standard_transformations + (implicit_multiplication_application,)), x)
-
+            result = sp.integrate(sp.sympify(expr), x)
             return {
                 "type": "integral",
                 "ok": True,
-                "expression": expr_text.replace("**", "^"),
+                "expression": expr,
                 "variable": "x",
-                "result": re.sub(r"(?<=\d)\*([a-zA-Z])", r"\1", str(result).replace("**", "^")),
+                "result": str(result),
             }
 
     except Exception:
         return None
 
     return None
+
 
 def python_calculation_engine(message: str) -> Dict[str, Any]:
     engines = [
@@ -1400,7 +1333,7 @@ def python_calculation_engine(message: str) -> Dict[str, Any]:
     return {
         "type": "calculation_required",
         "ok": False,
-        "error": "DinMax detected a calculation-heavy question, but this exact calculation pattern is not automated yet.",
+        "error": "Lumora detected a calculation-heavy question, but this exact calculation pattern is not automated yet.",
         "suggestion": "Use structured values such as x: 1,2,3 y: 4,5,6, or ask a direct formula question.",
     }
 
@@ -1422,18 +1355,6 @@ def calculation_failure_reply(calculation: Dict[str, Any]) -> str:
     )
 
 
-def math_to_latex(value: Any) -> str:
-    try:
-        expr = str(value).replace("^", "**")
-        parsed = parse_expr(
-            expr,
-            transformations=standard_transformations + (
-                implicit_multiplication_application,
-            ),
-        )
-        return sp.latex(parsed)
-    except Exception:
-        return str(value)
 def deterministic_calculation_reply(calculation: Dict[str, Any]) -> str:
     """
     This is the important fix.
@@ -1523,12 +1444,11 @@ def deterministic_calculation_reply(calculation: Dict[str, Any]) -> str:
         )
 
     if ctype == "physics_force":
-        force_value = fmt_num(calculation.get("force"), 6)
         return (
             "Force result\n\n"
             "\\[ F = ma \\]\n\n"
-            f"\\[ F = {fmt_num(calculation.get('mass'), 6)} \\times {fmt_num(calculation.get('acceleration'), 6)} = {force_value}\\,\\text{{N}} \\]\n\n"
-            f"Final answer: \\( F = {force_value}\\,\\text{{N}} \\)"
+            f"\\[ F = {fmt_num(calculation.get('mass'), 6)} \\times {fmt_num(calculation.get('acceleration'), 6)} = {fmt_num(calculation.get('force'), 6)} \\]\n\n"
+            f"Final answer: \\( F = {fmt_num(calculation.get('force'), 6)} \\)"
         )
 
     if ctype == "kinetic_energy":
@@ -1539,14 +1459,6 @@ def deterministic_calculation_reply(calculation: Dict[str, Any]) -> str:
             f"Final answer: \\( KE = {fmt_num(calculation.get('kinetic_energy'), 6)} \\)"
         )
 
-    if ctype == "acceleration":
-        return (
-            "Acceleration result\n\n"
-            "\\[ a = \\frac{v-u}{t} \\]\n\n"
-            f"\\[ a = \\frac{{{fmt_num(calculation.get('final_velocity'), 6)} - {fmt_num(calculation.get('initial_velocity'), 6)}}}{{{fmt_num(calculation.get('time'), 6)}}} \\]\n\n"
-            f"\\[ a = {fmt_num(calculation.get('acceleration'), 6)}\\,\\text{{m/s}}^2 \\]\n\n"
-            f"Final answer: \\( {fmt_num(calculation.get('acceleration'), 6)}\\,\\text{{m/s}}^2 \\)"
-        )
     if ctype == "ohms_law":
         return (
             "Ohm's Law result\n\n"
@@ -1582,14 +1494,14 @@ def deterministic_calculation_reply(calculation: Dict[str, Any]) -> str:
         return (
             "Derivative result\n\n"
             f"Expression: \\( {calculation.get('expression')} \\)\n\n"
-            f"\\[ \\frac{{d}}{{dx}}({calculation.get('expression')}) = {math_to_latex(calculation.get('result'))} \\]"
+            f"\\[ \\frac{{d}}{{dx}}({calculation.get('expression')}) = {calculation.get('result')} \\]"
         )
 
     if ctype == "integral":
         return (
             "Integral result\n\n"
             f"Expression: \\( {calculation.get('expression')} \\)\n\n"
-            f"\\[ \\int {calculation.get('expression')}\\,dx = {math_to_latex(calculation.get('result'))} + C \\]"
+            f"\\[ \\int {calculation.get('expression')}\\,dx = {calculation.get('result')} + C \\]"
         )
 
     return (
@@ -1636,7 +1548,7 @@ def quick_reply(message: str) -> Optional[str]:
     quick = {
         "hi": "Hi! What are we working on today?",
         "hello": "Hello! What would you like to study, build, or research?",
-        "hey": "Hey! What should DinMax help you with?",
+        "hey": "Hey! What should Lumora help you with?",
         "thanks": "You're welcome!",
         "thank you": "You're welcome!",
     }
@@ -1690,7 +1602,7 @@ def system_prompt(mode: str, fast: bool = False, long_answer: bool = False) -> s
     mode = (mode or "study").lower().strip()
 
     base = f"""
-You are DinMax AI.
+You are Lumora AI.
 
 Identity:
 - You are an AI study, research, writing, coding, data, quiz, flashcard, image-prompt, and video-prompt assistant.
@@ -1838,7 +1750,7 @@ Rules:
         return """
 The user may want an image prompt.
 
-If they want actual generation, tell them DinMax can use /image.
+If they want actual generation, tell them Lumora can use /image.
 If they want a prompt, produce a strong prompt and negative prompt.
 """
 
@@ -1846,296 +1758,16 @@ If they want a prompt, produce a strong prompt and negative prompt.
         return """
 The user may want video generation.
 
-If they want actual generation, tell them DinMax can use /video.
+If they want actual generation, tell them Lumora can use /video.
 If they want a prompt/script, produce a short structured video prompt.
 """
 
     return "Answer the user clearly and practically."
 
 
-
-def format_quiz_object_response(raw_text: str) -> Optional[str]:
-    """
-    Converts raw quiz dict/JSON text into a clean student-friendly quiz.
-
-    Handles:
-    {'quiz': [{'question': ..., 'options': [...], 'correct': ...}]}
-    {"quiz": [{"question": ..., "options": [...], "correct": ...}]}
-    {"questions": [...]}
-    """
-    raw = normalize_text(raw_text)
-    if not raw:
-        return None
-
-    lower = raw.lower()
-    if "'quiz'" not in lower and '"quiz"' not in lower and '"questions"' not in lower and "'questions'" not in lower:
-        return None
-
-    candidate = raw.strip()
-    candidate = candidate.replace("```json", "").replace("```python", "").replace("```", "").strip()
-
-    # Extract only the object portion if the model added prose around it.
-    if "{" in candidate and "}" in candidate:
-        candidate = candidate[candidate.find("{"):candidate.rfind("}") + 1]
-
-    data = None
-
-    try:
-        data = json.loads(candidate)
-    except Exception:
-        try:
-            data = ast.literal_eval(candidate)
-        except Exception:
-            return None
-
-    if not isinstance(data, dict):
-        return None
-
-    quiz_items = data.get("quiz") or data.get("questions") or data.get("items")
-    if not isinstance(quiz_items, list) or not quiz_items:
-        return None
-
-    letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    lines: List[str] = ["Quiz", ""]
-
-    for idx, item in enumerate(quiz_items, start=1):
-        if not isinstance(item, dict):
-            continue
-
-        question = normalize_text(
-            item.get("question")
-            or item.get("prompt")
-            or item.get("q")
-            or ""
-        )
-
-        if not question:
-            continue
-
-        options = item.get("options") or item.get("choices") or item.get("answers") or []
-        correct = normalize_text(
-            item.get("correct")
-            or item.get("correct_answer")
-            or item.get("answer")
-            or ""
-        )
-        explanation = normalize_text(item.get("explanation") or item.get("why") or "")
-
-        lines.append(f"{idx}. {question}")
-
-        option_labels: Dict[str, str] = {}
-
-        if isinstance(options, dict):
-            for key, value in options.items():
-                label = normalize_text(key).upper().replace(")", "").replace(".", "")
-                value_text = normalize_text(value)
-                if label and value_text:
-                    option_labels[label] = value_text
-                    lines.append(f"{label}) {value_text}")
-
-        elif isinstance(options, list):
-            for opt_index, value in enumerate(options):
-                if opt_index >= len(letters):
-                    break
-                label = letters[opt_index]
-                value_text = normalize_text(value)
-                option_labels[label] = value_text
-                lines.append(f"{label}) {value_text}")
-
-        correct_label = ""
-        correct_text = correct
-
-        if correct:
-            clean_correct = correct.strip()
-            clean_correct_label = clean_correct.upper().replace(")", "").replace(".", "")
-
-            if clean_correct_label in option_labels:
-                correct_label = clean_correct_label
-                correct_text = option_labels[correct_label]
-            else:
-                for label, value in option_labels.items():
-                    if clean_correct.lower() == value.lower():
-                        correct_label = label
-                        correct_text = value
-                        break
-
-        if correct_text:
-            if correct_label:
-                lines.append("")
-                lines.append(f"Correct answer: {correct_label}) {correct_text}")
-            else:
-                lines.append("")
-                lines.append(f"Correct answer: {correct_text}")
-
-        if explanation:
-            lines.append(f"Explanation: {explanation}")
-
-        lines.append("")
-
-    formatted = "\n".join(lines).strip()
-    return formatted if formatted != "Quiz" else None
-
-
-
-
-def repair_group2_chemistry_quiz_facts(reply: str) -> str:
-    """
-    Local chemistry fact repair for Group 2 quizzes.
-    Prevents common wrong answer keys before the user sees them.
-    """
-    s = normalize_text(reply)
-
-    lower = s.lower()
-    if "group 2" not in lower and "alkaline earth" not in lower:
-        return s
-
-    # Group 2 reactivity trend:
-    # Reactivity generally increases down the group.
-    s = re.sub(
-        r'(?ms)^(\d+)\.\s+What is the trend in the reactivity of Group 2 elements\?\s*'
-        r'\nA\)\s+Increases down the group\s*'
-        r'\nB\)\s+Decreases down the group\s*'
-        r'\nC\)\s+Remains the same down the group\s*'
-        r'\nD\)\s+Increases up the group\s*'
-        r'\n\s*Correct answer:\s+B\)\s+Decreases down the group',
-        r'\1. What is the trend in the reactivity of Group 2 elements?\n'
-        r'A) Increases down the group\n'
-        r'B) Decreases down the group\n'
-        r'C) Remains the same down the group\n'
-        r'D) Increases up the group\n\n'
-        r'Correct answer: A) Increases down the group',
-        s,
-    )
-
-    # If a model gives only the wrong answer line in a reactivity block, fix it.
-    s = re.sub(
-        r'(?ms)(What is the trend in the reactivity of Group 2 elements\?.*?)'
-        r'Correct answer:\s+B\)\s+Decreases down the group',
-        r'\1Correct answer: A) Increases down the group',
-        s,
-    )
-
-    # Group 2 melting points do not follow a perfectly simple monotonic trend.
-    s = re.sub(
-        r'(?ms)^(\d+)\.\s+What is the trend in the melting points of Group 2 elements\?.*?'
-        r'Correct answer:\s+[A-D]\).*?(?=\n\n\d+\.|\Z)',
-        r'\1. Which statement best describes the melting point trend of Group 2 elements?\n'
-        r'A) They follow a simple steady increase down the group\n'
-        r'B) They follow a simple steady decrease down the group\n'
-        r'C) They vary and do not follow a perfectly regular trend\n'
-        r'D) They are all the same\n\n'
-        r'Correct answer: C) They vary and do not follow a perfectly regular trend',
-        s,
-    )
-
-    # Fireworks color facts.
-    # Barium = green, Strontium = red, Magnesium = bright white light/sparks.
-    s = re.sub(
-        r'(?ms)^(\d+)\.\s+Which Group 2 element is used in fireworks to produce a bright green color\?.*?'
-        r'Correct answer:\s+[A-D]\).*?(?=\n\n\d+\.|\Z)',
-        r'\1. Which Group 2 element is used in fireworks to produce a bright green color?\n'
-        r'A) Magnesium (Mg)\n'
-        r'B) Calcium (Ca)\n'
-        r'C) Strontium (Sr)\n'
-        r'D) Barium (Ba)\n\n'
-        r'Correct answer: D) Barium (Ba)',
-        s,
-    )
-
-    s = re.sub(
-        r'(?ms)^(\d+)\.\s+Which Group 2 element is used in fireworks to produce a red color\?.*?'
-        r'Correct answer:\s+[A-D]\).*?(?=\n\n\d+\.|\Z)',
-        r'\1. Which Group 2 element is used in fireworks to produce a red color?\n'
-        r'A) Magnesium (Mg)\n'
-        r'B) Calcium (Ca)\n'
-        r'C) Strontium (Sr)\n'
-        r'D) Barium (Ba)\n\n'
-        r'Correct answer: C) Strontium (Sr)',
-        s,
-    )
-
-    return s.strip()
-
-
-
-
-def normalize_quiz_output_text(reply: str) -> str:
-    """
-    Universal quiz cleanup.
-    Fixes formatting problems for all subjects, not only chemistry.
-
-    Fixes:
-    - A) A) Option -> A) Option
-    - Correct answer: B) B) Option -> Correct answer: B) Option
-    - Markdown bold in questions
-    - Extra spacing
-    """
-    s = normalize_text(reply)
-
-    if not s:
-        return s
-
-    # Remove markdown bold markers.
-    s = re.sub(r'\*\*(.*?)\*\*', r'\1', s)
-
-    # Fix duplicated option labels:
-    # A) A) Group 1 -> A) Group 1
-    s = re.sub(
-        r'(?m)^([A-D])\)\s+\1\)\s+',
-        r'\1) ',
-        s,
-        flags=re.IGNORECASE,
-    )
-
-    # Fix duplicated correct answer labels:
-    # Correct answer: B) B) Group 2 -> Correct answer: B) Group 2
-    s = re.sub(
-        r'(?im)^(Correct answer:\s*)([A-D])\)\s+\2\)\s+',
-        r'\1\2) ',
-        s,
-    )
-
-    # Fix "Correct answer: B) B)" even with lowercase/spaces.
-    s = re.sub(
-        r'(?im)^(Correct answer:\s*)([A-D])\)\s+([A-D])\)\s+',
-        lambda m: f"{m.group(1)}{m.group(2).upper()}) " if m.group(2).upper() == m.group(3).upper() else m.group(0),
-        s,
-    )
-
-    # Normalize common LaTeX dollars in quiz text to display-friendly \( ... \)
-    # This helps frontend math renderer.
-    s = re.sub(r'\$([^$\n]+)\$', r'\\( \1 \\)', s)
-
-    # Ensure every numbered question starts on a clean line.
-    s = re.sub(r'(?<!\n)\s+(\d+\.\s+)', r'\n\n\1', s)
-
-    # Ensure Correct answer has a blank line before next question.
-    s = re.sub(r'(?m)^(Correct answer:.*?)(\n)(\d+\.\s+)', r'\1\n\n\3', s)
-
-    # Remove too many blank lines.
-    s = re.sub(r'\n{3,}', '\n\n', s)
-
-    return s.strip()
-
-
-def verifier_improvement_was_not_applied(original: str, improved: str, issues: List[str]) -> bool:
-    if not issues:
-        return False
-
-    o = re.sub(r'\s+', ' ', normalize_text(original)).strip().lower()
-    i = re.sub(r'\s+', ' ', normalize_text(improved)).strip().lower()
-
-    return o == i
-
-
-
 def clean_response_text(text: str) -> str:
     if not text:
         return ""
-
-    quiz_formatted = format_quiz_object_response(str(text))
-    if quiz_formatted:
-        return normalize_quiz_output_text(repair_group2_chemistry_quiz_facts(quiz_formatted))
 
     cleaned = str(text)
     replacements = {
@@ -2149,38 +1781,9 @@ def clean_response_text(text: str) -> str:
     for bad, good in replacements.items():
         cleaned = cleaned.replace(bad, good)
 
-    # Fix common UTF-8 mojibake from model/provider output.
-    mojibake_replacements = {
-        "Â²âº": "^2+",
-        "Â²â»": "^2-",
-        "Â³âº": "^3+",
-        "Â³â»": "^3-",
-        "Âº": "+",
-        "Â»": "-",
-        "âº": "+",
-        "â»": "-",
-        "Â²": "^2",
-        "Â³": "^3",
-        "²": "^2",
-        "³": "^3",
-        "?": "+",
-        "?": "-",
-        "2": "2",
-        "3": "3",
-        "Oâ": "O",
-        "CaÂ": "Ca",
-        "MgÂ": "Mg",
-        "BaÂ": "Ba",
-        "SrÂ": "Sr",
-        "Â": "",
-    }
-
-    for bad, good in mojibake_replacements.items():
-        cleaned = cleaned.replace(bad, good)
-
     cleaned = re.sub(r"(?i)^\s*(certainly|sure|of course)[,!\.\s-]*", "", cleaned).strip()
     cleaned = re.sub(r"\n{4,}", "\n\n", cleaned)
-    return normalize_quiz_output_text(repair_group2_chemistry_quiz_facts(cleaned.strip()))
+    return cleaned.strip()
 
 
 # =============================================================================
@@ -2382,7 +1985,7 @@ def build_messages(
 
 
 # =============================================================================
-# DinMax BRAIN
+# LUMORA BRAIN
 # =============================================================================
 
 def brain_classify_task(message: str) -> str:
@@ -2412,7 +2015,7 @@ def brain_classify_task(message: str) -> str:
     if is_math_request(text):
         return "math"
 
-    # Default for DinMax: universal study tutor.
+    # Default for Lumora: universal study tutor.
     if is_conceptual_study_request(message):
         return "study"
 
@@ -2501,38 +2104,6 @@ def brain_generate_answer(
     return None, errors
 
 
-def local_study_safety_repair(question: str, answer: str, task_type: str) -> Tuple[str, List[str]]:
-    """
-    Local backup repair when the verifier returns non-JSON.
-    This does not replace the AI verifier; it catches common study-answer issues.
-    """
-    repaired = clean_response_text(answer)
-    issues: List[str] = []
-
-    combined = f"{question}\n{repaired}".lower()
-
-    # Fix common chemistry explanation issue for Mg + O2 -> MgO.
-    if "group 2" in combined and "mgo" in combined:
-        old1 = "Oxygen (O2) gains 2 electrons to form a -2 ion (O2-)."
-        new1 = "Each oxygen atom gains 2 electrons to form an oxide ion, \\( O^{2-} \\). Since \\( O_2 \\) contains two oxygen atoms, the oxygen molecule gains 4 electrons in total and forms two oxide ions."
-        if old1 in repaired:
-            repaired = repaired.replace(old1, new1)
-            issues.append("Corrected oxide ion explanation for oxygen molecule.")
-
-        old2 = "The +2 ion (Mg2+) and the -2 ion (O2-) combine to form a neutral compound, magnesium oxide (MgO)."
-        new2 = "\\( Mg^{2+} \\) ions and \\( O^{2-} \\) oxide ions combine in a 1:1 ratio to form neutral magnesium oxide, \\( MgO \\)."
-        if old2 in repaired:
-            repaired = repaired.replace(old2, new2)
-            issues.append("Corrected MgO ionic explanation.")
-
-        repaired = repaired.replace("Mg2+", "\\( Mg^{2+} \\)")
-        repaired = repaired.replace("O2-", "\\( O^{2-} \\)")
-        repaired = repaired.replace("O2)", "\\( O_2 \\))")
-        repaired = repaired.replace("(O2)", "\\( O_2 \\)")
-
-    return repaired, issues
-
-
 def brain_verifier(question: str, answer: str, task_type: str) -> Dict[str, Any]:
     if not BRAIN_VERIFY:
         return {
@@ -2544,19 +2115,16 @@ def brain_verifier(question: str, answer: str, task_type: str) -> Dict[str, Any]
         }
 
     if not GROQ_API_KEY:
-        repaired, local_issues = local_study_safety_repair(question, answer, task_type)
         return {
             "approved": True,
-            "score": 80 if local_issues else 75,
-            "issues": ["Verifier skipped because GROQ_API_KEY is missing."] + local_issues,
-            "improved_answer": normalize_quiz_output_text(repaired),
-            "verifier": "local_fallback_no_groq",
+            "score": 75,
+            "issues": ["Verifier skipped because GROQ_API_KEY is missing."],
+            "improved_answer": answer,
+            "verifier": "unavailable",
         }
 
     verify_prompt = f"""
-You are DinMax Brain Verifier.
-
-Return ONLY valid JSON. No markdown. No code fences. No explanation outside JSON.
+You are Lumora Brain Verifier.
 
 Check this draft answer before the user sees it.
 
@@ -2566,35 +2134,8 @@ Check for:
 - missing steps
 - hallucinations
 - unsupported claims
-- subject lock: answer only the user's requested subject
-- task lock: do not mix quiz, research, coding, and study formats unless requested
-- quiz quality: every multiple-choice question must have exactly one best correct answer
-- quiz quality: do not output duplicated labels such as A) A) or Correct answer: B) B)
-- quiz quality: if an option is ambiguous, replace the whole question with a safer verified question
-- quiz quality: avoid obscure application questions unless the user requested advanced level
-- quiz quality: avoid ambiguous questions
-- quiz quality: avoid two options that mean the same correct answer
-- quiz quality: answer keys must match the options exactly
-- quiz quality: if facts are uncertain, rewrite the question to a safer verified concept
-- quiz quality: format as numbered questions with A), B), C), D), then Correct answer
-- quiz quality: if you list an issue, improved_answer must be different from the draft and must fix the issue
-- quiz quality: avoid ambiguous science questions where more than one option could be partly correct
-- quiz quality: for “loss of electrons,” the process is oxidation
-- quiz quality: avoid vague application questions like “used in antacids” unless the compound is specified
-- science accuracy: formulas, units, symbols, balanced equations, charges, ions, and terminology
-- chemistry accuracy: balanced equations, oxidation states, ion charges, and periodic trends
-- Group 2 rule: reactivity increases down the group
-- Group 2 rule: elements usually form +2 ions and have outer configuration ns^2
-- Group 2 rule: Group 2 oxides are generally basic
-- Group 2 rule: barium gives green fireworks, strontium gives red, magnesium gives bright white light/sparks
-- Group 2 rule: melting points do not follow a perfectly regular simple trend
-- no broken characters such as CaÂ²âº, Oâ, âº, or â»
-
-Important chemistry rule:
-- For MgO, magnesium forms Mg^2+ and oxygen forms O^2-.
-- Oxygen gas is O2. One O2 molecule forms two O^2- oxide ions, so it gains 4 electrons total.
-- Correct balanced example: 2Mg + O2 -> 2MgO.
-- Correct balanced example: Mg + 2H2O -> Mg(OH)2 + H2.
+- math formatting
+- code completeness when code is requested
 
 Important math rule:
 If the answer contains math, improved_answer must use LaTeX:
@@ -2610,7 +2151,7 @@ User question:
 Draft answer:
 {answer}
 
-Required JSON schema:
+Return JSON only:
 {{
   "approved": true,
   "score": 0,
@@ -2620,159 +2161,56 @@ Required JSON schema:
 
 Rules:
 - score must be 0 to 100.
-- approved should be true only if score is at least {BRAIN_MIN_VERIFY_SCORE} AND all listed issues are fixed in improved_answer. For quizzes, if there are any factual, ambiguity, duplicate-label, or answer-key issues, improved_answer must rewrite the affected questions.
-- improved_answer must contain the final user-facing answer. If you list any issue, improved_answer MUST fix that issue and must not be identical to the draft answer.
-- Return JSON only.
+- approved should be true only if score is at least {BRAIN_MIN_VERIFY_SCORE}.
+- improved_answer must contain the final user-facing answer.
+- Do not include markdown code fences around the JSON.
 """
 
     messages = [
-        {
-            "role": "system",
-            "content": "You are a strict verifier. You must return one valid JSON object only.",
-        },
+        {"role": "system", "content": "You are a strict AI answer verifier. Return valid JSON only."},
         {"role": "user", "content": verify_prompt},
     ]
 
-    try:
-        client = get_groq_client()
-        try:
-            response = client.chat.completions.create(
-                model=GROQ_VERIFIER_MODEL,
-                messages=messages,
-                temperature=0,
-                max_tokens=VERIFIER_MAX_TOKENS,
-                response_format={"type": "json_object"},
-            )
-        except TypeError:
-            response = client.chat.completions.create(
-                model=GROQ_VERIFIER_MODEL,
-                messages=messages,
-                temperature=0,
-                max_tokens=VERIFIER_MAX_TOKENS,
-            )
+    result = call_groq_model(
+        GROQ_VERIFIER_MODEL,
+        messages,
+        max_tokens=VERIFIER_MAX_TOKENS,
+        temperature=VERIFIER_TEMPERATURE,
+    )
 
-        raw_reply = response.choices[0].message.content or ""
-        data = extract_json_object(raw_reply)
-
-    except Exception as e:
-        repaired, local_issues = local_study_safety_repair(question, answer, task_type)
+    if not result.get("ok"):
         return {
             "approved": True,
-            "score": 80 if local_issues else 75,
-            "issues": [f"Verifier unavailable: {e}"] + local_issues,
-            "improved_answer": normalize_quiz_output_text(repaired),
-            "verifier": "local_fallback_error",
-            "verifier_model": None,
+            "score": 75,
+            "issues": [f"Verifier unavailable: {result.get('error')}"],
+            "improved_answer": answer,
+            "verifier": "error",
         }
 
+    data = extract_json_object(result.get("reply", ""))
     if not data:
-        repaired, local_issues = local_study_safety_repair(question, answer, task_type)
         return {
             "approved": True,
-            "score": 80 if local_issues else 70,
-            "issues": ["Verifier returned non-JSON; local safety repair applied."] + local_issues,
-            "improved_answer": normalize_quiz_output_text(repaired),
-            "verifier": "local_fallback_non_json",
-            "verifier_model": GROQ_VERIFIER_MODEL,
+            "score": 75,
+            "issues": ["Verifier returned non-JSON."],
+            "improved_answer": answer,
+            "verifier": "non_json",
         }
 
     score = clamp_int(data.get("score", 75), 75, 0, 100)
-    improved = normalize_quiz_output_text(normalize_text(data.get("improved_answer", "")) or answer)
-    improved, local_issues = local_study_safety_repair(question, improved, task_type)
-
+    improved = normalize_text(data.get("improved_answer", "")) or answer
     issues = data.get("issues", [])
     if not isinstance(issues, list):
         issues = [str(issues)]
-    issues.extend(local_issues)
-
-    # Never trust the model's approved flag by itself. Approval requires the
-    # configured score threshold, and any reported issue must be accompanied
-    # by a genuinely changed answer that applies the correction.
-    model_approved = bool(data.get("approved", score >= BRAIN_MIN_VERIFY_SCORE))
-    unresolved_change = verifier_improvement_was_not_applied(answer, improved, issues)
-    approved = model_approved and score >= BRAIN_MIN_VERIFY_SCORE and not unresolved_change
-
-    if unresolved_change:
-        issues.append("Verifier reported issues but did not apply a correction.")
 
     return {
-        "approved": approved,
+        "approved": bool(data.get("approved", score >= BRAIN_MIN_VERIFY_SCORE)),
         "score": score,
         "issues": issues,
         "improved_answer": improved,
-        "verifier": "groq_json",
+        "verifier": "groq",
         "verifier_model": GROQ_VERIFIER_MODEL,
     }
-
-
-def repair_unapproved_quiz_with_ai(question: str, draft_answer: str, verification: Dict[str, Any]) -> Optional[str]:
-    """
-    Universal quiz repair pass for any subject.
-    Runs when verifier rejects a quiz.
-    """
-    if not GROQ_API_KEY:
-        return None
-
-    issues = verification.get("issues") or []
-    if not isinstance(issues, list):
-        issues = [str(issues)]
-
-    issues_text = "\n".join(f"- {normalize_text(str(x))}" for x in issues)
-
-    repair_prompt = f"""
-You are DinMax Quiz Repair.
-
-The verifier rejected this quiz. Rewrite it before the student sees it.
-
-Rules:
-- Works for any subject.
-- Return only the repaired quiz text.
-- Do not return JSON.
-- Every multiple-choice question must have exactly one best answer.
-- Use A), B), C), D) options.
-- Include "Correct answer: X) option text" after every question.
-- Fix every verifier issue.
-- Avoid ambiguous questions.
-- Avoid duplicated labels like A) A).
-- Avoid "all of the above" and "both A and C".
-- If a question is unclear, replace the entire question with a safer verified one.
-- If asking about loss of electrons, the process is oxidation.
-- If asking about oxygen released in photosynthesis, oxygen comes from water during light-dependent reactions.
-
-Verifier issues:
-{issues_text}
-
-User request:
-{question}
-
-Rejected quiz:
-{draft_answer}
-"""
-
-    try:
-        client = get_groq_client()
-        response = client.chat.completions.create(
-            model=GROQ_VERIFIER_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You repair quizzes for factual accuracy, clarity, and unambiguous answer keys.",
-                },
-                {"role": "user", "content": repair_prompt},
-            ],
-            temperature=0,
-            max_tokens=2200,
-        )
-
-        repaired = response.choices[0].message.content or ""
-        repaired = clean_response_text(repaired)
-        repaired = normalize_quiz_output_text(repaired)
-        return repaired.strip() if repaired.strip() else None
-
-    except Exception as e:
-        print(f"Quiz repair failed: {e}")
-        return None
-
 
 
 def brain_store_memory(
@@ -2784,7 +2222,7 @@ def brain_store_memory(
     model: str,
     verification: Dict[str, Any],
 ) -> None:
-    _DinMax_BRAIN_MEMORY.append(
+    _LUMORA_BRAIN_MEMORY.append(
         {
             "time": utc_now(),
             "user_hash": hash_text(user_key),
@@ -2799,88 +2237,17 @@ def brain_store_memory(
         }
     )
 
-    if len(_DinMax_BRAIN_MEMORY) > BRAIN_MEMORY_MAX_ITEMS:
+    if len(_LUMORA_BRAIN_MEMORY) > BRAIN_MEMORY_MAX_ITEMS:
         overflow = max(50, BRAIN_MEMORY_MAX_ITEMS // 5)
-        del _DinMax_BRAIN_MEMORY[:overflow]
+        del _LUMORA_BRAIN_MEMORY[:overflow]
 
 
-
-def is_deterministic_linear_regression_lesson_request(message: str) -> bool:
-    text = normalize_text(message).lower()
-
-    if "linear regression" not in text:
-        return False
-
-    # If the user gives real x/y data, let the Python calculation engine handle it.
-    try:
-        if parse_regression_pairs(message):
-            return False
-    except Exception:
-        pass
-
-    lesson_words = [
-        "explain", "what is", "teach", "simple example", "example",
-        "lesson", "understand", "overview", "how does", "in simple terms"
-    ]
-
-    return any(word in text for word in lesson_words)
-
-
-def deterministic_linear_regression_lesson_reply(message: str) -> Optional[str]:
-    if not is_deterministic_linear_regression_lesson_request(message):
-        return None
-
-    # Verified example:
-    # x = bedrooms, y = house price
-    # slope = 50000, intercept = 50000
-    # model: y = 50000x + 50000
-    # prediction for x = 6: y = 350000
-    return (
-        "Linear regression explained\n\n"
-        "Linear regression is a method used to model the relationship between an input variable "
-        "\\( x \\) and an output variable \\( y \\). It finds the best straight line that can be used "
-        "to predict \\( y \\) from \\( x \\).\n\n"
-        "The general equation is:\n\n"
-        "\\[ y = mx + b \\]\n\n"
-        "Where:\n"
-        "- \\( y \\) is the value we want to predict\n"
-        "- \\( x \\) is the input value\n"
-        "- \\( m \\) is the slope\n"
-        "- \\( b \\) is the intercept\n\n"
-        "Simple example\n\n"
-        "Suppose we want to predict house price from the number of bedrooms:\n\n"
-        "| Bedrooms \\(x\\) | Price \\(y\\) |\n"
-        "|---:|---:|\n"
-        "| 2 | 150,000 |\n"
-        "| 3 | 200,000 |\n"
-        "| 4 | 250,000 |\n"
-        "| 5 | 300,000 |\n\n"
-        "Each time the number of bedrooms increases by 1, the price increases by 50,000. "
-        "So the slope is:\n\n"
-        "\\[ m = 50000 \\]\n\n"
-        "Now use one point, for example \\( x = 2, y = 150000 \\), to find the intercept:\n\n"
-        "\\[ y = mx + b \\]\n\n"
-        "\\[ 150000 = 50000(2) + b \\]\n\n"
-        "\\[ 150000 = 100000 + b \\]\n\n"
-        "\\[ b = 50000 \\]\n\n"
-        "So the correct regression equation is:\n\n"
-        "\\[ y = 50000x + 50000 \\]\n\n"
-        "Prediction example\n\n"
-        "For a 6-bedroom house:\n\n"
-        "\\[ y = 50000(6) + 50000 \\]\n\n"
-        "\\[ y = 300000 + 50000 = 350000 \\]\n\n"
-        "Final answer: the predicted price for a 6-bedroom house is 350,000.\n\n"
-        "Key idea: linear regression finds the line that best predicts an output from an input."
-    )
-
-
-def DinMax_brain_engine(
+def lumora_brain_engine(
     request: Request,
     chat_request: ChatRequest,
     fast: bool = False,
     force_long: bool = False,
 ) -> Dict[str, Any]:
-    started_at = time.time()
     check_app_key(request)
 
     request_id = make_request_id()
@@ -2893,7 +2260,7 @@ def DinMax_brain_engine(
         return {
             "ok": True,
             "reply": "Please type a message first.",
-            "brain": "DinMax Brain v12.7.7",
+            "brain": "Lumora Brain v12.4",
             "request_id": request_id,
         }
 
@@ -2903,7 +2270,7 @@ def DinMax_brain_engine(
         return {
             "ok": True,
             "reply": date_reply,
-            "brain": "DinMax Brain v12.7.7",
+            "brain": "Lumora Brain v12.4",
             "task_type": "datetime",
             "provider": "datetime",
             "model": "datetime-handler",
@@ -2917,51 +2284,12 @@ def DinMax_brain_engine(
         return {
             "ok": True,
             "reply": quick,
-            "brain": "DinMax Brain v12.7.7",
+            "brain": "Lumora Brain v12.4",
             "task_type": "quick_reply",
             "provider": "quick_reply",
             "model": "quick-reply",
             "cached": False,
             "request_id": request_id,
-        }
-
-
-    lesson_reply = deterministic_linear_regression_lesson_reply(message)
-    if lesson_reply:
-        verification = {
-            "approved": True,
-            "score": 100,
-            "issues": [],
-            "verifier": "deterministic_lesson_template",
-            "verifier_model": None,
-        }
-
-        brain_store_memory(
-            user_key=user_key,
-            question=message,
-            answer=lesson_reply,
-            task_type="study",
-            provider="python",
-            model="deterministic-linear-regression-lesson",
-            verification=verification,
-        )
-        track_usage(user_key, "chat", True)
-
-        return {
-            "ok": True,
-            "reply": lesson_reply,
-            "brain": "DinMax Brain v12.7.7",
-            "task_type": "study",
-            "mode": "study",
-            "provider": "python",
-            "model": "deterministic-linear-regression-lesson",
-            "cached": False,
-            "used_search": False,
-            "calculation_used": False,
-            "calculation_result": None,
-            "request_id": request_id,
-            "elapsed_seconds": round(time.time() - started_at, 4),
-            "verification": verification,
         }
 
     task_type = brain_classify_task(message)
@@ -2974,7 +2302,7 @@ def DinMax_brain_engine(
         return {
             "ok": True,
             "reply": cached,
-            "brain": "DinMax Brain v12.7.7",
+            "brain": "Lumora Brain v12.4",
             "task_type": task_type,
             "mode": mode,
             "provider": "cache",
@@ -3021,7 +2349,7 @@ def DinMax_brain_engine(
             return {
                 "ok": True,
                 "reply": reply,
-                "brain": "DinMax Brain v12.7.7",
+                "brain": "Lumora Brain v12.4",
                 "task_type": task_type,
                 "mode": mode,
                 "provider": "python",
@@ -3031,7 +2359,7 @@ def DinMax_brain_engine(
                 "calculation_used": True,
                 "calculation_result": calculation_result,
                 "request_id": request_id,
-                "elapsed_seconds": round(time.time() - started_at, 4),
+                "elapsed_seconds": 0.0,
                 "verification": verification,
             }
 
@@ -3041,7 +2369,7 @@ def DinMax_brain_engine(
             return {
                 "ok": True,
                 "reply": reply,
-                "brain": "DinMax Brain v12.7.7",
+                "brain": "Lumora Brain v12.4",
                 "task_type": task_type,
                 "mode": mode,
                 "provider": "python",
@@ -3072,8 +2400,8 @@ def DinMax_brain_engine(
         track_usage(user_key, "chat", False)
         return {
             "ok": False,
-            "reply": "DinMax could not get a response from the configured AI providers. Check GROQ_API_KEY or HF_TOKEN in your .env file.",
-            "brain": "DinMax Brain v12.7.7",
+            "reply": "Lumora could not get a response from the configured AI providers. Check GROQ_API_KEY or HF_TOKEN in your .env file.",
+            "brain": "Lumora Brain v12.4",
             "task_type": task_type,
             "mode": mode,
             "provider": None,
@@ -3087,70 +2415,15 @@ def DinMax_brain_engine(
         }
 
     draft_reply = clean_response_text(result.get("reply", ""))
-    if task_type == "quiz":
-        draft_reply = normalize_quiz_output_text(
-            repair_group2_chemistry_quiz_facts(draft_reply)
-        )
-    final_reply = draft_reply
 
     verification = {"approved": True, "score": 100, "issues": [], "verifier": "skipped"}
 
     should_verify = chat_request.verify if chat_request.verify is not None else BRAIN_VERIFY
-    verifiable_tasks = {"study", "quiz", "cards", "research", "code", "reasoning", "search", "simple"}
-
-    if should_verify and task_type in verifiable_tasks:
+    if should_verify and task_type in {"research", "code", "reasoning"}:
         verification = brain_verifier(message, draft_reply, task_type)
-        candidate_reply = clean_response_text(
-            verification.get("improved_answer") or draft_reply
-        )
-
-        # A rejected quiz gets one dedicated repair pass, then a fresh,
-        # independent verification. Never reference an undefined `reply`.
-        if task_type == "quiz" and not verification.get("approved", False):
-            repaired_quiz = repair_unapproved_quiz_with_ai(
-                message,
-                candidate_reply,
-                verification,
-            )
-            if repaired_quiz:
-                candidate_reply = clean_response_text(repaired_quiz)
-                verification = brain_verifier(message, candidate_reply, task_type)
-                candidate_reply = clean_response_text(
-                    verification.get("improved_answer") or candidate_reply
-                )
-
-        # For non-quiz answers, if the verifier supplied a real correction,
-        # verify that corrected answer one more time before exposing it.
-        elif not verification.get("approved", False) and candidate_reply != draft_reply:
-            second_check = brain_verifier(message, candidate_reply, task_type)
-            if second_check.get("approved", False):
-                verification = second_check
-                candidate_reply = clean_response_text(
-                    second_check.get("improved_answer") or candidate_reply
-                )
-
-        if verification.get("approved", False):
-            final_reply = candidate_reply
-        else:
-            # Accuracy beats fluency: do not display an answer that failed the
-            # final gate. This is especially important for student quizzes.
-            if task_type == "quiz":
-                final_reply = (
-                    "I generated a quiz, but the accuracy check found unresolved "
-                    "factual or answer-key issues, so I did not show it. Please try again."
-                )
-            else:
-                final_reply = (
-                    "I could not verify this answer reliably enough to show it as correct. "
-                    "Please rephrase the question or provide the exact values or topic."
-                )
-            verification["improved_answer"] = final_reply
-
-    final_reply = clean_response_text(final_reply)
-    if task_type == "quiz":
-        final_reply = normalize_quiz_output_text(
-            repair_group2_chemistry_quiz_facts(final_reply)
-        )
+        final_reply = clean_response_text(verification.get("improved_answer") or draft_reply)
+    else:
+        final_reply = draft_reply
 
     set_cached_reply(message, mode, fast, long_answer, final_reply)
 
@@ -3169,7 +2442,7 @@ def DinMax_brain_engine(
     return {
         "ok": True,
         "reply": final_reply,
-        "brain": "DinMax Brain v12.7.7",
+        "brain": "Lumora Brain v12.4",
         "task_type": task_type,
         "mode": mode,
         "provider": result.get("provider"),
@@ -3376,27 +2649,27 @@ def calculate_endpoint(payload: CalculateRequest, request: Request) -> Dict[str,
 
 @app.post("/chat")
 def chat_endpoint(payload: ChatRequest, request: Request) -> Dict[str, Any]:
-    return DinMax_brain_engine(request, payload, fast=False, force_long=False)
+    return lumora_brain_engine(request, payload, fast=False, force_long=False)
 
 
 @app.post("/chat-fast")
 def chat_fast_endpoint(payload: ChatRequest, request: Request) -> Dict[str, Any]:
-    return DinMax_brain_engine(request, payload, fast=True, force_long=False)
+    return lumora_brain_engine(request, payload, fast=True, force_long=False)
 
 
 @app.post("/chat-long")
 def chat_long_endpoint(payload: ChatRequest, request: Request) -> Dict[str, Any]:
-    return DinMax_brain_engine(request, payload, fast=False, force_long=True)
+    return lumora_brain_engine(request, payload, fast=False, force_long=True)
 
 
 @app.post("/brain-chat")
 def brain_chat_endpoint(payload: ChatRequest, request: Request) -> Dict[str, Any]:
-    return DinMax_brain_engine(request, payload, fast=False, force_long=False)
+    return lumora_brain_engine(request, payload, fast=False, force_long=False)
 
 
 @app.post("/generate")
 def generate_endpoint(payload: ChatRequest, request: Request) -> Dict[str, Any]:
-    return DinMax_brain_engine(request, payload, fast=False, force_long=payload.long_answer)
+    return lumora_brain_engine(request, payload, fast=False, force_long=payload.long_answer)
 
 
 @app.post("/study-plan")
@@ -3407,7 +2680,7 @@ def study_plan_endpoint(payload: StudyPlanRequest, request: Request) -> Dict[str
         f"Goal: {payload.goal or 'master the fundamentals and practice effectively'}."
     )
     chat_payload = ChatRequest(message=prompt, mode="study", long_answer=True)
-    return DinMax_brain_engine(request, chat_payload, fast=False, force_long=True)
+    return lumora_brain_engine(request, chat_payload, fast=False, force_long=True)
 
 
 @app.post("/quiz-generator")
@@ -3417,13 +2690,8 @@ def quiz_generator_endpoint(payload: QuizRequest, request: Request) -> Dict[str,
         f"Level: {payload.level}. Include correct answers and short explanations. "
         f"Notes: {payload.notes}"
     )
-    chat_payload = ChatRequest(
-        message=prompt,
-        mode="quiz",
-        long_answer=True,
-        verify=payload.verify,
-    )
-    return DinMax_brain_engine(request, chat_payload, fast=False, force_long=True)
+    chat_payload = ChatRequest(message=prompt, mode="quiz", long_answer=True)
+    return lumora_brain_engine(request, chat_payload, fast=False, force_long=True)
 
 
 @app.post("/flashcards")
@@ -3433,7 +2701,7 @@ def flashcards_endpoint(payload: FlashcardRequest, request: Request) -> Dict[str
         f"Level: {payload.level}. Notes: {payload.notes}"
     )
     chat_payload = ChatRequest(message=prompt, mode="cards", long_answer=True)
-    return DinMax_brain_engine(request, chat_payload, fast=False, force_long=True)
+    return lumora_brain_engine(request, chat_payload, fast=False, force_long=True)
 
 
 @app.post("/research-helper")
@@ -3444,7 +2712,7 @@ def research_helper_endpoint(payload: ResearchRequest, request: Request) -> Dict
         "Organize the answer with an outline, key points, and next steps."
     )
     chat_payload = ChatRequest(message=prompt, mode="research", long_answer=True, use_search=payload.use_search)
-    return DinMax_brain_engine(request, chat_payload, fast=False, force_long=True)
+    return lumora_brain_engine(request, chat_payload, fast=False, force_long=True)
 
 
 # =============================================================================
@@ -3473,22 +2741,4 @@ async def global_exception_handler(request: Request, exc: Exception):
         "error_id": error_id,
         "detail": str(exc) if ENVIRONMENT != "production" else "Check server logs for details.",
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

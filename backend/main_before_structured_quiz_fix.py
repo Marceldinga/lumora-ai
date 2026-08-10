@@ -78,7 +78,7 @@ except Exception:
 # =============================================================================
 
 APP_NAME = "DinMax AI Backend"
-APP_VERSION = "12.9.0-single-file-stable"
+APP_VERSION = "12.8.1-verifier-error-guard"
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
 NETLIFY_SITE = os.getenv("NETLIFY_SITE", "https://DinMax-study.netlify.app").strip().rstrip("/")
@@ -90,8 +90,8 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "auto").strip().lower()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant").strip()
 GROQ_FAST_MODEL = os.getenv("GROQ_FAST_MODEL", "llama-3.1-8b-instant").strip()
-GROQ_BACKUP_MODEL = os.getenv("GROQ_BACKUP_MODEL", "llama-3.1-8b-instant").strip()
-GROQ_VERIFIER_MODEL = os.getenv("GROQ_VERIFIER_MODEL", "llama-3.1-8b-instant").strip()
+GROQ_BACKUP_MODEL = os.getenv("GROQ_BACKUP_MODEL", "llama-3.3-70b-versatile").strip()
+GROQ_VERIFIER_MODEL = os.getenv("GROQ_VERIFIER_MODEL", "llama-3.3-70b-versatile").strip()
 
 HF_TOKEN = os.getenv("HF_TOKEN", "").strip()
 HF_MODEL = os.getenv("HF_MODEL", "meta-llama/Llama-3.1-8B-Instruct").strip()
@@ -108,7 +108,7 @@ TAVILY_SEARCH_URL = os.getenv("TAVILY_SEARCH_URL", "https://api.tavily.com/searc
 DEFAULT_MAX_TOKENS = int(os.getenv("DinMax_MAX_TOKENS", "1200"))
 FAST_MAX_TOKENS = int(os.getenv("DinMax_FAST_MAX_TOKENS", "700"))
 LONG_MAX_TOKENS = int(os.getenv("DinMax_LONG_MAX_TOKENS", "2600"))
-VERIFIER_MAX_TOKENS = int(os.getenv("DinMax_VERIFIER_MAX_TOKENS", "1000"))
+VERIFIER_MAX_TOKENS = int(os.getenv("DinMax_VERIFIER_MAX_TOKENS", "3500"))
 DEFAULT_TEMPERATURE = float(os.getenv("DinMax_TEMPERATURE", "0.25"))
 VERIFIER_TEMPERATURE = float(os.getenv("DinMax_VERIFIER_TEMPERATURE", "0.0"))
 
@@ -224,7 +224,6 @@ class QuizRequest(BaseModel):
     questions: int = 10
     question_type: str = "multiple choice"
     notes: str = ""
-    verify: Optional[bool] = None
 
 
 class FlashcardRequest(BaseModel):
@@ -2533,6 +2532,102 @@ def local_study_safety_repair(question: str, answer: str, task_type: str) -> Tup
     return repaired, issues
 
 
+
+def requested_quiz_question_count(question: str) -> Optional[int]:
+    """Return the requested quiz length when the prompt states one."""
+    patterns = [
+        r"\b(?:create|make|generate|write)?\s*(\d{1,2})[- ]question\b",
+        r"\bquiz\s+(?:with|of|containing)\s+(\d{1,2})\s+questions?\b",
+        r"\b(\d{1,2})\s+questions?\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, question, flags=re.IGNORECASE)
+        if match:
+            value = int(match.group(1))
+            if 1 <= value <= 50:
+                return value
+    return None
+
+
+def quiz_requires_explanations(question: str) -> bool:
+    lowered = question.lower()
+    return any(token in lowered for token in (
+        "explanation", "explanations", "explain each", "with reasons", "include reasons"
+    ))
+
+
+def validate_quiz_structure(question: str, answer: str) -> List[str]:
+    """
+    Deterministic quiz gate. It does not judge all subject facts, but it makes
+    malformed quizzes impossible to approve.
+    """
+    issues: List[str] = []
+    text = clean_response_text(answer)
+
+    # Split only at numbered question starts, preserving each question block.
+    starts = list(re.finditer(r"(?m)^\s*(\d{1,2})[.)]\s+", text))
+    blocks: List[str] = []
+    numbers: List[int] = []
+    for index, match in enumerate(starts):
+        end = starts[index + 1].start() if index + 1 < len(starts) else len(text)
+        numbers.append(int(match.group(1)))
+        blocks.append(text[match.start():end].strip())
+
+    requested_count = requested_quiz_question_count(question)
+    if requested_count is not None and len(blocks) != requested_count:
+        issues.append(
+            f"Quiz must contain exactly {requested_count} numbered questions; found {len(blocks)}."
+        )
+    elif not blocks:
+        issues.append("Quiz has no recognizable numbered questions.")
+
+    if numbers and numbers != list(range(1, len(numbers) + 1)):
+        issues.append("Question numbering must be consecutive starting at 1.")
+
+    require_explanations = quiz_requires_explanations(question)
+    seen_questions = set()
+
+    for index, block in enumerate(blocks, start=1):
+        first_line = block.splitlines()[0].strip()
+        question_text = re.sub(r"^\s*\d{1,2}[.)]\s*", "", first_line).strip()
+        normalized_question = re.sub(r"\W+", " ", question_text.lower()).strip()
+        if normalized_question in seen_questions:
+            issues.append(f"Question {index} duplicates an earlier question.")
+        seen_questions.add(normalized_question)
+
+        if not question_text.endswith("?"):
+            issues.append(f"Question {index} must end with a question mark.")
+
+        option_matches = re.findall(r"(?m)^\s*([A-D])[.)]\s+(.+?)\s*$", block)
+        labels = [label for label, _ in option_matches]
+        if labels != ["A", "B", "C", "D"]:
+            issues.append(f"Question {index} must contain exactly one A), B), C), and D) option in order.")
+
+        answer_match = re.search(
+            r"(?im)^\s*Correct\s+answer\s*:\s*([A-D])\)\s*(.+?)\s*$",
+            block,
+        )
+        if not answer_match:
+            issues.append(f"Question {index} is missing 'Correct answer: X) option text'.")
+        elif len(option_matches) == 4:
+            answer_label = answer_match.group(1)
+            answer_text = re.sub(r"\s+", " ", answer_match.group(2)).strip().rstrip(".")
+            option_map = {
+                label: re.sub(r"\s+", " ", option).strip().rstrip(".")
+                for label, option in option_matches
+            }
+            if answer_label not in option_map or answer_text.lower() != option_map[answer_label].lower():
+                issues.append(f"Question {index}'s answer key must exactly match its selected option.")
+
+        explanation_match = re.search(r"(?im)^\s*Explanation\s*:\s*(.+?)\s*$", block)
+        if require_explanations and not explanation_match:
+            issues.append(f"Question {index} is missing an explanation.")
+        elif require_explanations and explanation_match and len(explanation_match.group(1).strip()) < 12:
+            issues.append(f"Question {index}'s explanation is too brief to be useful.")
+
+    return issues
+
+
 def brain_verifier(question: str, answer: str, task_type: str) -> Dict[str, Any]:
     if not BRAIN_VERIFY:
         return {
@@ -2546,11 +2641,12 @@ def brain_verifier(question: str, answer: str, task_type: str) -> Dict[str, Any]
     if not GROQ_API_KEY:
         repaired, local_issues = local_study_safety_repair(question, answer, task_type)
         return {
-            "approved": True,
-            "score": 80 if local_issues else 75,
+            "approved": False,
+            "score": 0,
             "issues": ["Verifier skipped because GROQ_API_KEY is missing."] + local_issues,
             "improved_answer": normalize_quiz_output_text(repaired),
             "verifier": "local_fallback_no_groq",
+            "verifier_model": None,
         }
 
     verify_prompt = f"""
@@ -2577,6 +2673,10 @@ Check for:
 - quiz quality: answer keys must match the options exactly
 - quiz quality: if facts are uncertain, rewrite the question to a safer verified concept
 - quiz quality: format as numbered questions with A), B), C), D), then Correct answer
+- quiz quality: every question must end with ?
+- quiz quality: when the user asks for explanations, every question must include a non-empty "Explanation:" line
+- quiz quality: the answer text after "Correct answer: X)" must exactly match option X
+- quiz quality: preserve the exact requested number of questions
 - quiz quality: if you list an issue, improved_answer must be different from the draft and must fix the issue
 - quiz quality: avoid ambiguous science questions where more than one option could be partly correct
 - quiz quality: for “loss of electrons,” the process is oxidation
@@ -2620,7 +2720,7 @@ Required JSON schema:
 
 Rules:
 - score must be 0 to 100.
-- approved should be true only if score is at least {BRAIN_MIN_VERIFY_SCORE} AND all listed issues are fixed in improved_answer. For quizzes, if there are any factual, ambiguity, duplicate-label, or answer-key issues, improved_answer must rewrite the affected questions.
+- approved should be true only if score is at least {BRAIN_MIN_VERIFY_SCORE}, the issues array is empty, and improved_answer needs no further correction. For quizzes, missing explanations, malformed options, incorrect answer-key text, wrong question count, duplicates, ambiguity, or factual errors require rejection and repair.
 - improved_answer must contain the final user-facing answer. If you list any issue, improved_answer MUST fix that issue and must not be identical to the draft answer.
 - Return JSON only.
 """
@@ -2657,20 +2757,23 @@ Rules:
     except Exception as e:
         repaired, local_issues = local_study_safety_repair(question, answer, task_type)
         return {
-            "approved": True,
-            "score": 80 if local_issues else 75,
+            # A failed verifier must never be treated as approval. The caller
+            # may attempt one repair pass, but it must not expose an unchecked
+            # quiz as verified.
+            "approved": False,
+            "score": 0,
             "issues": [f"Verifier unavailable: {e}"] + local_issues,
             "improved_answer": normalize_quiz_output_text(repaired),
             "verifier": "local_fallback_error",
-            "verifier_model": None,
+            "verifier_model": GROQ_VERIFIER_MODEL,
         }
 
     if not data:
         repaired, local_issues = local_study_safety_repair(question, answer, task_type)
         return {
-            "approved": True,
-            "score": 80 if local_issues else 70,
-            "issues": ["Verifier returned non-JSON; local safety repair applied."] + local_issues,
+            "approved": False,
+            "score": 0,
+            "issues": ["Verifier returned non-JSON; local safety repair applied but remains unverified."] + local_issues,
             "improved_answer": normalize_quiz_output_text(repaired),
             "verifier": "local_fallback_non_json",
             "verifier_model": GROQ_VERIFIER_MODEL,
@@ -2685,15 +2788,29 @@ Rules:
         issues = [str(issues)]
     issues.extend(local_issues)
 
-    # Never trust the model's approved flag by itself. Approval requires the
-    # configured score threshold, and any reported issue must be accompanied
-    # by a genuinely changed answer that applies the correction.
+    # Never trust the model's approved flag by itself. Quiz structure is also
+    # checked deterministically, so missing explanations or malformed answer
+    # keys cannot slip through even when the model says "approved".
+    if task_type == "quiz":
+        issues.extend(validate_quiz_structure(question, improved))
+
+    # Deduplicate while preserving order and discard empty issue strings.
+    issues = list(dict.fromkeys(normalize_text(str(item)) for item in issues if normalize_text(str(item))))
+
     model_approved = bool(data.get("approved", score >= BRAIN_MIN_VERIFY_SCORE))
     unresolved_change = verifier_improvement_was_not_applied(answer, improved, issues)
-    approved = model_approved and score >= BRAIN_MIN_VERIFY_SCORE and not unresolved_change
-
     if unresolved_change:
         issues.append("Verifier reported issues but did not apply a correction.")
+
+    # Strict gate: a quiz is approved only when no verifier or deterministic
+    # validator issues remain. Historical "minor" issues therefore trigger a
+    # repair and fresh verification instead of being shown to the student.
+    approved = (
+        model_approved
+        and score >= BRAIN_MIN_VERIFY_SCORE
+        and not issues
+        and not unresolved_change
+    )
 
     return {
         "approved": approved,
@@ -2730,12 +2847,19 @@ Rules:
 - Do not return JSON.
 - Every multiple-choice question must have exactly one best answer.
 - Use A), B), C), D) options.
-- Include "Correct answer: X) option text" after every question.
+- Include "Correct answer: X) option text" after every question, and make the answer text exactly match option X.
+- Include a useful "Explanation:" line after every correct answer whenever the user requested explanations.
+- Never omit an explanation from any question when explanations were requested.
 - Fix every verifier issue.
 - Avoid ambiguous questions.
 - Avoid duplicated labels like A) A).
 - Avoid "all of the above" and "both A and C".
-- If a question is unclear, replace the entire question with a safer verified one.
+- If a question is unclear or factually doubtful, replace the entire question with a safer, standard syllabus question.
+- Do not preserve any factual statement merely because it appeared in the rejected quiz.
+- Check every answer and explanation independently before returning the quiz.
+- Keep the requested number of questions.
+- Use question marks, clean spacing, and no duplicated or near-duplicated questions.
+- For chemistry, verify element names, flame colours, reaction products, reactivity trends, equations, and compound uses.
 - If asking about loss of electrons, the process is oxidation.
 - If asking about oxygen released in photosynthesis, oxygen comes from water during light-dependent reactions.
 
@@ -2756,12 +2880,12 @@ Rejected quiz:
             messages=[
                 {
                     "role": "system",
-                    "content": "You repair quizzes for factual accuracy, clarity, and unambiguous answer keys.",
+                    "content": "You repair quizzes for factual accuracy, complete required structure, explanations, clarity, and unambiguous answer keys.",
                 },
                 {"role": "user", "content": repair_prompt},
             ],
             temperature=0,
-            max_tokens=2200,
+            max_tokens=3500,
         )
 
         repaired = response.choices[0].message.content or ""
@@ -2880,7 +3004,6 @@ def DinMax_brain_engine(
     fast: bool = False,
     force_long: bool = False,
 ) -> Dict[str, Any]:
-    started_at = time.time()
     check_app_key(request)
 
     request_id = make_request_id()
@@ -2960,7 +3083,7 @@ def DinMax_brain_engine(
             "calculation_used": False,
             "calculation_result": None,
             "request_id": request_id,
-            "elapsed_seconds": round(time.time() - started_at, 4),
+            "elapsed_seconds": 0.0,
             "verification": verification,
         }
 
@@ -3031,7 +3154,7 @@ def DinMax_brain_engine(
                 "calculation_used": True,
                 "calculation_result": calculation_result,
                 "request_id": request_id,
-                "elapsed_seconds": round(time.time() - started_at, 4),
+                "elapsed_seconds": 0.0,
                 "verification": verification,
             }
 
@@ -3087,10 +3210,6 @@ def DinMax_brain_engine(
         }
 
     draft_reply = clean_response_text(result.get("reply", ""))
-    if task_type == "quiz":
-        draft_reply = normalize_quiz_output_text(
-            repair_group2_chemistry_quiz_facts(draft_reply)
-        )
     final_reply = draft_reply
 
     verification = {"approved": True, "score": 100, "issues": [], "verifier": "skipped"}
@@ -3099,58 +3218,121 @@ def DinMax_brain_engine(
     verifiable_tasks = {"study", "quiz", "cards", "research", "code", "reasoning", "search", "simple"}
 
     if should_verify and task_type in verifiable_tasks:
-        verification = brain_verifier(message, draft_reply, task_type)
-        candidate_reply = clean_response_text(
-            verification.get("improved_answer") or draft_reply
-        )
+        try:
+            verification = brain_verifier(message, draft_reply, task_type)
 
-        # A rejected quiz gets one dedicated repair pass, then a fresh,
-        # independent verification. Never reference an undefined `reply`.
-        if task_type == "quiz" and not verification.get("approved", False):
-            repaired_quiz = repair_unapproved_quiz_with_ai(
-                message,
-                candidate_reply,
-                verification,
+            # IMPORTANT: the verifier's improved_answer is the corrected,
+            # user-facing answer. Always prefer it when it is non-empty.
+            improved_answer = clean_response_text(
+                str(verification.get("improved_answer") or "").strip()
             )
-            if repaired_quiz:
-                candidate_reply = clean_response_text(repaired_quiz)
-                verification = brain_verifier(message, candidate_reply, task_type)
-                candidate_reply = clean_response_text(
-                    verification.get("improved_answer") or candidate_reply
-                )
+            candidate_reply = improved_answer or draft_reply
 
-        # For non-quiz answers, if the verifier supplied a real correction,
-        # verify that corrected answer one more time before exposing it.
-        elif not verification.get("approved", False) and candidate_reply != draft_reply:
-            second_check = brain_verifier(message, candidate_reply, task_type)
-            if second_check.get("approved", False):
-                verification = second_check
-                candidate_reply = clean_response_text(
-                    second_check.get("improved_answer") or candidate_reply
-                )
+            # For quizzes, verify the corrected answer too. This prevents the
+            # app from approving one draft but accidentally returning another.
+            if task_type == "quiz" and candidate_reply != draft_reply:
+                second_check = brain_verifier(message, candidate_reply, task_type)
+                if second_check.get("approved", False):
+                    verification = second_check
+                    second_improved = clean_response_text(
+                        str(second_check.get("improved_answer") or "").strip()
+                    )
+                    candidate_reply = second_improved or candidate_reply
 
-        if verification.get("approved", False):
-            final_reply = candidate_reply
-        else:
-            # Accuracy beats fluency: do not display an answer that failed the
-            # final gate. This is especially important for student quizzes.
+            # A rejected quiz gets up to two controlled repair attempts. Each
+            # attempt is independently verified, and only an approved result
+            # may reach the student. This avoids making the user manually retry.
+            if task_type == "quiz" and not verification.get("approved", False):
+                for _repair_attempt in range(2):
+                    repaired_quiz = repair_unapproved_quiz_with_ai(
+                        message,
+                        candidate_reply,
+                        verification,
+                    )
+                    if not repaired_quiz:
+                        break
+
+                    repaired_candidate = clean_response_text(repaired_quiz)
+                    repaired_check = brain_verifier(
+                        message, repaired_candidate, task_type
+                    )
+
+                    # Use verifier edits only as the next candidate. They still
+                    # must pass a fresh verification before being returned.
+                    verifier_edit = clean_response_text(
+                        str(repaired_check.get("improved_answer") or "").strip()
+                    )
+                    candidate_reply = verifier_edit or repaired_candidate
+                    verification = repaired_check
+
+                    if verification.get("approved", False):
+                        break
+
+                    # If the verifier supplied an edited answer while rejecting
+                    # it, verify that exact edit once before another repair pass.
+                    if verifier_edit and verifier_edit != repaired_candidate:
+                        edit_check = brain_verifier(
+                            message, verifier_edit, task_type
+                        )
+                        verification = edit_check
+                        edit_improved = clean_response_text(
+                            str(edit_check.get("improved_answer") or "").strip()
+                        )
+                        candidate_reply = edit_improved or verifier_edit
+                        if verification.get("approved", False):
+                            break
+
+            elif not verification.get("approved", False) and candidate_reply != draft_reply:
+                second_check = brain_verifier(message, candidate_reply, task_type)
+                if second_check.get("approved", False):
+                    verification = second_check
+                    second_improved = clean_response_text(
+                        str(second_check.get("improved_answer") or "").strip()
+                    )
+                    candidate_reply = second_improved or candidate_reply
+
+            if verification.get("approved", False):
+                # This assignment is intentionally explicit: the top-level
+                # reply must be the corrected verifier output, never the draft.
+                final_reply = candidate_reply
+                verification["improved_answer"] = candidate_reply
+            else:
+                if task_type == "quiz":
+                    final_reply = (
+                        "I generated a quiz, but the accuracy check found unresolved "
+                        "factual or answer-key issues, so I did not show it. Please try again."
+                    )
+                else:
+                    final_reply = (
+                        "I could not verify this answer reliably enough to show it as correct. "
+                        "Please rephrase the question or provide the exact values or topic."
+                    )
+                verification["improved_answer"] = final_reply
+
+        except Exception as verifier_error:
+            # Never turn a verifier/repair failure into HTTP 500. Record the
+            # traceback in the server console and return a safe user response.
+            traceback.print_exc()
+            log_event("verification_error", {
+                "request_id": request_id,
+                "task_type": task_type,
+                "error": str(verifier_error),
+            })
             if task_type == "quiz":
                 final_reply = (
-                    "I generated a quiz, but the accuracy check found unresolved "
-                    "factual or answer-key issues, so I did not show it. Please try again."
+                    "The quiz was generated, but the accuracy checker encountered an "
+                    "internal error, so I did not show an unverified quiz. Please try again."
                 )
             else:
-                final_reply = (
-                    "I could not verify this answer reliably enough to show it as correct. "
-                    "Please rephrase the question or provide the exact values or topic."
-                )
-            verification["improved_answer"] = final_reply
-
-    final_reply = clean_response_text(final_reply)
-    if task_type == "quiz":
-        final_reply = normalize_quiz_output_text(
-            repair_group2_chemistry_quiz_facts(final_reply)
-        )
+                final_reply = draft_reply
+            verification = {
+                "approved": False,
+                "score": 0,
+                "issues": [f"Verification pipeline error: {verifier_error}"],
+                "improved_answer": final_reply,
+                "verifier": "error_guard",
+                "verifier_model": GROQ_VERIFIER_MODEL,
+            }
 
     set_cached_reply(message, mode, fast, long_answer, final_reply)
 
@@ -3417,12 +3599,7 @@ def quiz_generator_endpoint(payload: QuizRequest, request: Request) -> Dict[str,
         f"Level: {payload.level}. Include correct answers and short explanations. "
         f"Notes: {payload.notes}"
     )
-    chat_payload = ChatRequest(
-        message=prompt,
-        mode="quiz",
-        long_answer=True,
-        verify=payload.verify,
-    )
+    chat_payload = ChatRequest(message=prompt, mode="quiz", long_answer=True)
     return DinMax_brain_engine(request, chat_payload, fast=False, force_long=True)
 
 

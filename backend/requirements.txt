@@ -5,3 +5,5 @@ requests
 groq
 huggingface_hub
 pillow
+sympy
+numpy
