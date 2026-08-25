@@ -1,7 +1,7 @@
 
 # =============================================================================
 # DinMax AI BACKEND - COMPLETE SINGLE FILE
-# Version: 12.6.0-json-verifier-fallback-fixed
+# Version: 13.0.0-neural-female-voice
 #
 # File name: main.py
 #
@@ -12,7 +12,7 @@
 #   but /chat introduced a wrong intermediate value and broken Python syntax.
 #
 # Install:
-#   pip install fastapi uvicorn pydantic requests groq pillow python-dotenv
+#   pip install fastapi uvicorn pydantic requests groq pillow python-dotenv edge-tts
 #
 # Run:
 #   cd C:\Users\mding\DinMax_ai\backend
@@ -48,6 +48,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import requests
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 try:
@@ -72,13 +73,18 @@ try:
 except Exception:
     Image = None
 
+try:
+    import edge_tts
+except Exception:
+    edge_tts = None
+
 
 # =============================================================================
 # CONFIG
 # =============================================================================
 
 APP_NAME = "DinMax AI Backend"
-APP_VERSION = "12.9.0-single-file-stable"
+APP_VERSION = "13.0.0-neural-female-voice"
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production").strip().lower()
 NETLIFY_SITE = os.getenv("NETLIFY_SITE", "https://DinMax-study.netlify.app").strip().rstrip("/")
@@ -133,6 +139,14 @@ MAX_PROMPT_CHARS_VIDEO = int(os.getenv("MAX_PROMPT_CHARS_VIDEO", "2500"))
 GROQ_TIMEOUT_SECONDS = int(os.getenv("GROQ_TIMEOUT_SECONDS", "60"))
 HF_TEXT_TIMEOUT_SECONDS = int(os.getenv("HF_TEXT_TIMEOUT_SECONDS", "75"))
 TAVILY_TIMEOUT_SECONDS = int(os.getenv("TAVILY_TIMEOUT_SECONDS", "25"))
+
+# Neural text-to-speech defaults. The Flutter salon app can call POST /tts.
+TTS_DEFAULT_VOICE = os.getenv("TTS_DEFAULT_VOICE", "en-US-JennyNeural").strip()
+TTS_DEFAULT_RATE = os.getenv("TTS_DEFAULT_RATE", "+10%").strip()
+TTS_DEFAULT_PITCH = os.getenv("TTS_DEFAULT_PITCH", "+2Hz").strip()
+TTS_MAX_CHARS = int(os.getenv("TTS_MAX_CHARS", "4000"))
+TTS_TIMEOUT_SECONDS = int(os.getenv("TTS_TIMEOUT_SECONDS", "45"))
+
 HF_IMAGE_TIMEOUT_SECONDS = int(os.getenv("HF_IMAGE_TIMEOUT_SECONDS", "180"))
 HF_VIDEO_TIMEOUT_SECONDS = int(os.getenv("HF_VIDEO_TIMEOUT_SECONDS", "420"))
 
@@ -144,7 +158,7 @@ HF_VIDEO_TIMEOUT_SECONDS = int(os.getenv("HF_VIDEO_TIMEOUT_SECONDS", "420"))
 app = FastAPI(
     title=APP_NAME,
     version=APP_VERSION,
-    description="DinMax AI unified backend with Groq, Hugging Face, Tavily, Brain routing, memory, verification, and deterministic calculation replies.",
+    description="DinMax AI unified backend with Groq, Hugging Face, Tavily, Brain routing, memory, verification, deterministic calculation replies, and neural female text-to-speech.",
 )
 
 allowed_origins = [
@@ -193,6 +207,13 @@ class ChatRequest(BaseModel):
 
 class CalculateRequest(BaseModel):
     message: str
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice: str = TTS_DEFAULT_VOICE
+    rate: str = TTS_DEFAULT_RATE
+    pitch: str = TTS_DEFAULT_PITCH
 
 
 class ImageRequest(BaseModel):
@@ -487,6 +508,89 @@ def set_cached_reply(message: str, mode: str, fast: bool, long_answer: bool, rep
 
 
 # =============================================================================
+# NEURAL TEXT-TO-SPEECH
+# =============================================================================
+
+@app.post("/tts")
+async def text_to_speech(payload: TTSRequest, request: Request) -> Response:
+    """
+    Convert text to MP3 speech using a fixed neural female voice by default.
+
+    Default voice: en-US-JennyNeural
+    This endpoint is designed for the Faith Hair Style Flutter app so the
+    browser cannot silently replace the requested voice with a male system
+    voice. The caller may override voice/rate/pitch when needed.
+    """
+    check_app_key(request)
+
+    if edge_tts is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Neural voice is unavailable because edge-tts is not installed on the server.",
+        )
+
+    speech_text = clean_user_message(payload.text, max_chars=TTS_MAX_CHARS)
+    if not speech_text:
+        raise HTTPException(status_code=400, detail="Text is required.")
+
+    voice = normalize_text(payload.voice) or TTS_DEFAULT_VOICE
+    rate = normalize_text(payload.rate) or TTS_DEFAULT_RATE
+    pitch = normalize_text(payload.pitch) or TTS_DEFAULT_PITCH
+
+    # Only allow sensible Edge TTS rate/pitch syntax. Fall back to defaults
+    # rather than forwarding arbitrary values to the speech provider.
+    if not re.fullmatch(r"[+-]\d+%", rate):
+        rate = TTS_DEFAULT_RATE
+    if not re.fullmatch(r"[+-]\d+Hz", pitch):
+        pitch = TTS_DEFAULT_PITCH
+
+    try:
+        communicate = edge_tts.Communicate(
+            text=speech_text,
+            voice=voice,
+            rate=rate,
+            pitch=pitch,
+        )
+
+        audio = bytearray()
+        async for chunk in communicate.stream():
+            if chunk.get("type") == "audio":
+                data = chunk.get("data")
+                if data:
+                    audio.extend(data)
+
+        if not audio:
+            raise HTTPException(
+                status_code=502,
+                detail="The neural speech service returned no audio.",
+            )
+
+        return Response(
+            content=bytes(audio),
+            media_type="audio/mpeg",
+            headers={
+                "Cache-Control": "no-store",
+                "X-DinMax-TTS-Voice": voice,
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log_event(
+            "tts_error",
+            {
+                "error": str(exc)[:500],
+                "voice": voice,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not generate neural speech: {exc}",
+        )
+
+
+# =============================================================================
 # BASIC ROUTES
 # =============================================================================
 
@@ -509,6 +613,7 @@ def home() -> Dict[str, Any]:
             "brain_chat": "/brain-chat",
             "brain_memory": "/brain-memory",
             "calculate": "/calculate",
+            "tts": "/tts",
             "image": "/image",
             "video": "/video",
             "features": "/dashboard/features",
@@ -562,6 +667,13 @@ def health() -> Dict[str, Any]:
             ],
         },
         "tavily": {"key_set": bool(TAVILY_API_KEY)},
+        "neural_tts": {
+            "enabled": edge_tts is not None,
+            "default_voice": TTS_DEFAULT_VOICE,
+            "default_rate": TTS_DEFAULT_RATE,
+            "default_pitch": TTS_DEFAULT_PITCH,
+            "endpoint": "/tts",
+        },
         "limits": {
             "chat_per_minute": RATE_LIMIT_CHAT_PER_MINUTE,
             "search_per_minute": RATE_LIMIT_SEARCH_PER_MINUTE,
@@ -693,6 +805,13 @@ def dashboard_features() -> Dict[str, Any]:
                 "description": "Generate Q/A cards from notes or topics.",
                 "endpoint": "/flashcards",
                 "status": "active",
+            },
+            {
+                "id": "tts",
+                "title": "Neural Female Voice",
+                "description": "Convert AI replies to natural MP3 speech using a fixed neural female voice.",
+                "endpoint": "/tts",
+                "status": "active" if edge_tts is not None else "missing_edge_tts",
             },
             {
                 "id": "image",
